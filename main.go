@@ -1,9 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,7 +11,7 @@ import (
 )
 
 func mergeResults(
-	matchChannel chan string) {
+	matchChannel chan []byte) {
 	for match := range matchChannel {
 		fmt.Println("Found match: ", string(match))
 	}
@@ -22,18 +22,21 @@ func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
 	waitGroup *sync.WaitGroup,
-	matchChannel chan string) {
-
+	matchChannel chan []byte) {
 	defer waitGroup.Done()
 
-	dat, err := ioutil.ReadFile(path)
+	file, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
-
-	match := pattern.Find(dat)
-	if match != nil {
-		matchChannel <- string(match)
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		match := pattern.Find([]byte(text))
+		if match != nil {
+			matchChannel <- match
+		}
 	}
 
 }
@@ -41,7 +44,7 @@ func findMatchInFile(
 func findMatches(
 	pattern *regexp.Regexp,
 	waitGroup *sync.WaitGroup,
-	matchChannel chan string) filepath.WalkFunc {
+	matchChannel chan []byte) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			panic(err)
@@ -81,7 +84,7 @@ func main() {
 
 	var waitGroup sync.WaitGroup
 	pattern := regexp.MustCompile(*patternPtr)
-	matchChannel := make(chan string)
+	matchChannel := make(chan []byte)
 
 	err := filepath.Walk(
 		*filenamePtr,
