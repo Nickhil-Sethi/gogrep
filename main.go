@@ -71,11 +71,6 @@ func main() {
 		"./",
 		"File or directory to search in")
 
-	sortFieldPtr := flag.String(
-		"sort",
-		"",
-		"Field to sort on")
-
 	flag.Parse()
 
 	if *patternPtr == "" {
