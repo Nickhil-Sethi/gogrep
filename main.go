@@ -19,7 +19,7 @@ func mergeResults(
 
 // TODO(nickhil) : have this read line by line
 func findMatchInFile(
-	pattern string,
+	pattern *regexp.Regexp,
 	path string,
 	waitGroup *sync.WaitGroup,
 	matchChannel chan string) {
@@ -31,8 +31,7 @@ func findMatchInFile(
 		panic(err)
 	}
 
-	re := regexp.MustCompile(pattern)
-	match := re.Find(dat)
+	match := pattern.Find(dat)
 	if match != nil {
 		matchChannel <- string(match)
 	}
@@ -40,7 +39,7 @@ func findMatchInFile(
 }
 
 func findMatches(
-	pattern string,
+	pattern *regexp.Regexp,
 	waitGroup *sync.WaitGroup,
 	matchChannel chan string) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
@@ -80,12 +79,14 @@ func main() {
 
 	fmt.Println("Searching for ", *patternPtr, " in ", *filenamePtr)
 
-	matchChannel := make(chan string)
 	var waitGroup sync.WaitGroup
+	pattern := regexp.MustCompile(*patternPtr)
+	matchChannel := make(chan string)
+
 	err := filepath.Walk(
 		*filenamePtr,
 		findMatches(
-			*patternPtr, &waitGroup, matchChannel))
+			pattern, &waitGroup, matchChannel))
 
 	if err != nil {
 		panic(err)
