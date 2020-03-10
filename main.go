@@ -34,13 +34,12 @@ func findMatchInFile(
 	// log of casting here. is this expensive?
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		text := scanner.Text()
-		match := pattern.Find([]byte(text))
+		line := scanner.Bytes()
+		match := pattern.Find(line)
 		if match != nil {
-			matchChannel <- []byte(text)
+			matchChannel <- line
 		}
 	}
-
 }
 
 func findMatches(
@@ -53,12 +52,14 @@ func findMatches(
 		}
 		switch mode := info.Mode(); {
 		case mode.IsDir():
-			// do directory stuff
 			return nil
 		case mode.IsRegular():
-			// do file stuff
 			waitGroup.Add(1)
-			go findMatchInFile(pattern, path, waitGroup, matchChannel)
+			go findMatchInFile(
+				pattern,
+				path,
+				waitGroup,
+				matchChannel)
 		}
 		return nil
 	}
