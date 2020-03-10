@@ -17,7 +17,6 @@ func mergeResults(
 	}
 }
 
-// TODO(nickhil) : have this read line by line
 func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
@@ -30,12 +29,15 @@ func findMatchInFile(
 		panic(err)
 	}
 	defer file.Close()
+
+	// TODO(nickhil) : we're doing a
+	// log of casting here. is this expensive?
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
 		match := pattern.Find([]byte(text))
 		if match != nil {
-			matchChannel <- match
+			matchChannel <- []byte(text)
 		}
 	}
 
