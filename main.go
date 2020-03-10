@@ -74,7 +74,7 @@ func main() {
 	filenamePtr := flag.String(
 		"path",
 		"./",
-		"File or directory to search in")
+		"File or directory to search in. Defaults to current directory.")
 
 	flag.Parse()
 
