@@ -13,7 +13,7 @@ import (
 func mergeResults(
 	matchChannel chan []byte) {
 	for match := range matchChannel {
-		fmt.Println("Found match: ", string(match))
+		fmt.Println(string(match))
 	}
 }
 
