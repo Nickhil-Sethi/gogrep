@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -10,10 +10,23 @@ import (
 	"sync"
 )
 
+type jsonRow map[string]interface{}
+
+func filterJSON(
+	row jsonRow,
+	pattern *regexp.Regexp,
+	sortChannel chan jsonRow) {
+	b, _ := json.Marshal(row)
+	match := pattern.Find(b)
+	if match != nil {
+		sortChannel <- row
+	}
+}
+
 func mergeResults(
-	matchChannel chan []byte) {
-	for match := range matchChannel {
-		fmt.Println(string(match))
+	sortChannel chan jsonRow) {
+	for match := range sortChannel {
+		fmt.Println(match)
 	}
 }
 
@@ -21,7 +34,7 @@ func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
 	waitGroup *sync.WaitGroup,
-	matchChannel chan []byte) {
+	sortChannel chan jsonRow) {
 	defer waitGroup.Done()
 
 	file, err := os.Open(path)
@@ -30,22 +43,21 @@ func findMatchInFile(
 	}
 	defer file.Close()
 
-	// TODO(nickhil) : we're doing a
-	// log of casting here. is this expensive?
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		match := pattern.Find(line)
-		if match != nil {
-			matchChannel <- line
+	dec := json.NewDecoder(file)
+	for dec.More() {
+		var r jsonRow
+		err := dec.Decode(&r)
+		if err != nil {
+			panic(err)
 		}
+		go filterJSON(r, pattern, sortChannel)
 	}
 }
 
 func findMatches(
 	pattern *regexp.Regexp,
 	waitGroup *sync.WaitGroup,
-	matchChannel chan []byte) filepath.WalkFunc {
+	sortChannel chan jsonRow) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			panic(err)
@@ -59,7 +71,7 @@ func findMatches(
 				pattern,
 				path,
 				waitGroup,
-				matchChannel)
+				sortChannel)
 		}
 		return nil
 	}
@@ -76,6 +88,16 @@ func main() {
 		"./",
 		"File or directory to search in. Defaults to current directory.")
 
+	filterJsonPath := flag.String(
+		"key",
+		"",
+		"JSON path of key to filter on.")
+
+	filterJsonValue := flag.String(
+		"value",
+		"",
+		"Key value to filter on.")
+
 	flag.Parse()
 
 	if *patternPtr == "" {
@@ -83,21 +105,27 @@ func main() {
 		return
 	}
 
+	eitherJSONProvided := (*filterJsonPath != "" || *filterJsonValue != "")
+	bothJSONProvided := (*filterJsonPath != "" && *filterJsonValue != "")
+	if eitherJSONProvided && !bothJSONProvided {
+		fmt.Println("Must provide both filter key and filter value if using filter functionality.")
+	}
 	fmt.Println("Searching for ", *patternPtr, " in ", *filenamePtr)
+
+	sortChannel := make(chan jsonRow)
 
 	var waitGroup sync.WaitGroup
 	pattern := regexp.MustCompile(*patternPtr)
-	matchChannel := make(chan []byte)
-
 	err := filepath.Walk(
 		*filenamePtr,
 		findMatches(
-			pattern, &waitGroup, matchChannel))
+			pattern, &waitGroup, sortChannel))
 
 	if err != nil {
 		panic(err)
 	}
 
-	go mergeResults(matchChannel)
+	go mergeResults(sortChannel)
+
 	waitGroup.Wait()
 }
