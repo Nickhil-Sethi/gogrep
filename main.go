@@ -24,18 +24,21 @@ func filterJSON(
 }
 
 func mergeResults(
-	sortChannel chan jsonRow) {
+	sortChannel chan jsonRow,
+	waitGroup *sync.WaitGroup) {
 	for match := range sortChannel {
-		fmt.Println(match)
+		stuff, _ := json.Marshal(match)
+		fmt.Println(string(stuff))
+		waitGroup.Done()
 	}
 }
 
 func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
-	waitGroup *sync.WaitGroup,
+	wg *sync.WaitGroup,
 	sortChannel chan jsonRow) {
-	defer waitGroup.Done()
+	defer wg.Done()
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -50,6 +53,7 @@ func findMatchInFile(
 		if err != nil {
 			panic(err)
 		}
+		wg.Add(1)
 		go filterJSON(r, pattern, sortChannel)
 	}
 }
@@ -115,6 +119,7 @@ func main() {
 	sortChannel := make(chan jsonRow)
 
 	var waitGroup sync.WaitGroup
+
 	pattern := regexp.MustCompile(*patternPtr)
 	err := filepath.Walk(
 		*filenamePtr,
@@ -125,7 +130,7 @@ func main() {
 		panic(err)
 	}
 
-	go mergeResults(sortChannel)
+	go mergeResults(sortChannel, &waitGroup)
 
 	waitGroup.Wait()
 }
