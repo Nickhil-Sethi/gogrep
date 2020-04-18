@@ -114,11 +114,11 @@ func main() {
 	if eitherJSONProvided && !bothJSONProvided {
 		fmt.Println("Must provide both filter key and filter value if using filter functionality.")
 	}
-	fmt.Println("Searching for ", *patternPtr, " in ", *filenamePtr)
 
-	sortChannel := make(chan jsonRow)
-
+	sortChannel := make(chan jsonRow, 100)
 	var waitGroup sync.WaitGroup
+
+	go mergeResults(sortChannel, &waitGroup)
 
 	pattern := regexp.MustCompile(*patternPtr)
 	err := filepath.Walk(
@@ -130,7 +130,6 @@ func main() {
 		panic(err)
 	}
 
-	go mergeResults(sortChannel, &waitGroup)
-
 	waitGroup.Wait()
+	close(sortChannel)
 }
