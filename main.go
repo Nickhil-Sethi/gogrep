@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/heap"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -25,10 +26,13 @@ func filterJSON(
 
 func mergeResults(
 	sortChannel chan jsonRow,
-	waitGroup *sync.WaitGroup) {
+	waitGroup *sync.WaitGroup,
+	pq *PriorityQueue) {
 	for match := range sortChannel {
-		stuff, _ := json.Marshal(match)
-		fmt.Println(string(stuff))
+		parsedMatch, _ := json.Marshal(match)
+		// TODO(nickhil) : add heap
+		// priority queue here
+		fmt.Println(string(parsedMatch))
 		waitGroup.Done()
 	}
 }
@@ -45,6 +49,9 @@ func findMatchInFile(
 		panic(err)
 	}
 	defer file.Close()
+
+	// TODO(nickhil) : add
+	// gzip functionality here
 
 	dec := json.NewDecoder(file)
 	for dec.More() {
@@ -92,6 +99,8 @@ func main() {
 		"./",
 		"File or directory to search in. Defaults to current directory.")
 
+	// TODO(nickhil): add real options here
+	// remove json filter value
 	filterJsonPath := flag.String(
 		"key",
 		"",
@@ -117,8 +126,10 @@ func main() {
 
 	sortChannel := make(chan jsonRow, 100)
 	var waitGroup sync.WaitGroup
+	queue := make(PriorityQueue, 0)
 
-	go mergeResults(sortChannel, &waitGroup)
+	go mergeResults(
+		sortChannel, &waitGroup, &queue)
 
 	pattern := regexp.MustCompile(*patternPtr)
 	err := filepath.Walk(
@@ -132,4 +143,10 @@ func main() {
 
 	waitGroup.Wait()
 	close(sortChannel)
+
+	// Take the items out; they arrive in decreasing priority order.
+	for queue.Len() > 0 {
+		item := heap.Pop(&queue).(*Item)
+		fmt.Printf("%.2d:%s ", item.priority, item.value)
+	}
 }
