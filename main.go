@@ -29,12 +29,15 @@ func mergeResults(
 	waitGroup *sync.WaitGroup,
 	pq *PriorityQueue) {
 	for match := range sortChannel {
+		message := (match["message"]).(map[string]interface{})
+		timestamp := (message["asctime"]).(string)
 		item := &Item{
 			value:    match,
-			priority: "fake",
+			priority: timestamp,
+			index:    len(*pq),
 		}
 		heap.Push(pq, item)
-		// heap.Fix(pq)
+		// heap.Fix(pq, len(*pq)-1)
 		waitGroup.Done()
 	}
 }

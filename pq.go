@@ -20,7 +20,8 @@ type PriorityQueue []*Item
 func (pq PriorityQueue) Len() int { return len(pq) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
-	return pq[i].priority < pq[j].priority
+	// fmt.Print("In less ", pq[i].priority, " ", pq[j].priority, " ", (pq[i].priority < pq[j].priority))
+	return pq[i].priority > pq[j].priority
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
