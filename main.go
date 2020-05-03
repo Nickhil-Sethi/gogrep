@@ -29,10 +29,12 @@ func mergeResults(
 	waitGroup *sync.WaitGroup,
 	pq *PriorityQueue) {
 	for match := range sortChannel {
-		parsedMatch, _ := json.Marshal(match)
-		// TODO(nickhil) : add heap
-		// priority queue here
-		fmt.Println(string(parsedMatch))
+		item := &Item{
+			value:    match,
+			priority: "fake",
+		}
+		heap.Push(pq, item)
+		// heap.Fix(pq)
 		waitGroup.Done()
 	}
 }
@@ -101,27 +103,11 @@ func main() {
 
 	// TODO(nickhil): add real options here
 	// remove json filter value
-	filterJsonPath := flag.String(
-		"key",
-		"",
-		"JSON path of key to filter on.")
-
-	filterJsonValue := flag.String(
-		"value",
-		"",
-		"Key value to filter on.")
-
 	flag.Parse()
 
 	if *patternPtr == "" {
 		fmt.Println("Please enter a non-empty string for the pattern argument.")
 		return
-	}
-
-	eitherJSONProvided := (*filterJsonPath != "" || *filterJsonValue != "")
-	bothJSONProvided := (*filterJsonPath != "" && *filterJsonValue != "")
-	if eitherJSONProvided && !bothJSONProvided {
-		fmt.Println("Must provide both filter key and filter value if using filter functionality.")
 	}
 
 	sortChannel := make(chan jsonRow, 100)
@@ -144,9 +130,10 @@ func main() {
 	waitGroup.Wait()
 	close(sortChannel)
 
-	// Take the items out; they arrive in decreasing priority order.
 	for queue.Len() > 0 {
 		item := heap.Pop(&queue).(*Item)
-		fmt.Printf("%.2d:%s ", item.priority, item.value)
+		value := item.value
+		parsedMatch, _ := json.Marshal(value)
+		fmt.Println(string(parsedMatch))
 	}
 }
