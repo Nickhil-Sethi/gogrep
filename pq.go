@@ -4,6 +4,7 @@ package main
 
 import (
 	"container/heap"
+	"fmt"
 )
 
 // An Item is something we manage in a priority queue.
@@ -20,8 +21,10 @@ type PriorityQueue []*Item
 func (pq PriorityQueue) Len() int { return len(pq) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
-	// fmt.Print("In less ", pq[i].priority, " ", pq[j].priority, " ", (pq[i].priority < pq[j].priority))
-	return pq[i].priority > pq[j].priority
+	isLess := pq[i].priority < pq[j].priority
+	fmt.Printf("%d is less than %d : %s %s %t\n",
+		i, j, pq[i].priority, pq[j].priority, isLess)
+	return isLess
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
@@ -30,6 +33,7 @@ func (pq PriorityQueue) Swap(i, j int) {
 	pq[j].index = j
 }
 
+// Push : pushes an item onto the priority queu
 func (pq *PriorityQueue) Push(x interface{}) {
 	n := len(*pq)
 	item := x.(*Item)
@@ -37,13 +41,14 @@ func (pq *PriorityQueue) Push(x interface{}) {
 	*pq = append(*pq, item)
 }
 
+// Pop : removes an item from the priority queue
 func (pq *PriorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
-	item := old[0]
-	old[0] = nil    // avoid memory leak
+	item := old[n-1]
+	old[n-1] = nil  // avoid memory leak
 	item.index = -1 // for safety
-	*pq = old[1:n]
+	*pq = old[0 : n-1]
 	return item
 }
 
