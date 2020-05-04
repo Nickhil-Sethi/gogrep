@@ -34,10 +34,8 @@ func mergeResults(
 		item := &Item{
 			value:    match,
 			priority: timestamp,
-			index:    len(*pq),
 		}
 		heap.Push(pq, item)
-		// heap.Fix(pq, len(*pq)-1)
 		waitGroup.Done()
 	}
 }
@@ -113,10 +111,16 @@ func main() {
 		return
 	}
 
-	sortChannel := make(chan jsonRow, 100)
-	var waitGroup sync.WaitGroup
 	queue := make(PriorityQueue, 0)
+	sortChannel := make(chan jsonRow, 100)
 
+	// blocks until all rows
+	// from all files have been added
+	// to the heap
+	var waitGroup sync.WaitGroup
+
+	// continually sorting
+	// the results in the backgroud
 	go mergeResults(
 		sortChannel, &waitGroup, &queue)
 
