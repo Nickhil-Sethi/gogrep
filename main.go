@@ -16,11 +16,14 @@ type jsonRow map[string]interface{}
 func filterJSON(
 	row jsonRow,
 	pattern *regexp.Regexp,
-	sortChannel chan jsonRow) {
+	sortChannel chan jsonRow,
+	wg *sync.WaitGroup) {
 	b, _ := json.Marshal(row)
 	match := pattern.Find(b)
 	if match != nil {
 		sortChannel <- row
+	} else {
+		wg.Done()
 	}
 }
 
@@ -45,6 +48,7 @@ func findMatchInFile(
 	path string,
 	wg *sync.WaitGroup,
 	sortChannel chan jsonRow) {
+
 	defer wg.Done()
 
 	file, err := os.Open(path)
@@ -64,7 +68,7 @@ func findMatchInFile(
 			panic(err)
 		}
 		wg.Add(1)
-		go filterJSON(r, pattern, sortChannel)
+		go filterJSON(r, pattern, sortChannel, wg)
 	}
 }
 
