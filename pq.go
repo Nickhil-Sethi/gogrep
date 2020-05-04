@@ -4,7 +4,6 @@ package main
 
 import (
 	"container/heap"
-	"fmt"
 )
 
 // An Item is something we manage in a priority queue.
@@ -22,8 +21,6 @@ func (pq PriorityQueue) Len() int { return len(pq) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
 	isLess := pq[i].priority < pq[j].priority
-	fmt.Printf("%d is less than %d : %s %s %t\n",
-		i, j, pq[i].priority, pq[j].priority, isLess)
 	return isLess
 }
 
