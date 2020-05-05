@@ -144,7 +144,7 @@ func main() {
 	for queue.Len() > 0 {
 		item := heap.Pop(&queue).(*Item)
 		value := item.value
-		parsedMatch, _ := json.Marshal(value)
-		fmt.Println(string(parsedMatch))
+		stringified, _ := json.Marshal(value)
+		fmt.Println(string(stringified))
 	}
 }
