@@ -13,18 +13,41 @@ import (
 
 type jsonRow map[string]interface{}
 
+func practiceMatches(row jsonRow, filter map[string]interface{}) bool {
+	message := (row["message"]).(map[string]interface{})
+	practiceID, _ := message["practice_id"]
+	rowPracticeID := int(practiceID.(float64))
+	filterPracticeID, filterPresent := filter["practice_id"]
+	if filterPresent && filterPracticeID != rowPracticeID {
+		return false
+	}
+	return true
+}
+
+func rowMatchesFilters(row jsonRow, filter map[string]interface{}) bool {
+	return practiceMatches(row, filter)
+}
+
 func filterJSON(
 	row jsonRow,
 	pattern *regexp.Regexp,
 	sortChannel chan jsonRow,
-	wg *sync.WaitGroup) {
+	wg *sync.WaitGroup,
+	filterValues map[string]interface{}) {
+
+	if !rowMatchesFilters(row, filterValues) {
+		wg.Done()
+		return
+	}
+
 	b, _ := json.Marshal(row)
 	match := pattern.Find(b)
-	if match != nil {
-		sortChannel <- row
-	} else {
+	if match == nil {
 		wg.Done()
+		return
 	}
+
+	sortChannel <- row
 }
 
 func mergeResults(
@@ -47,7 +70,8 @@ func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
 	wg *sync.WaitGroup,
-	sortChannel chan jsonRow) {
+	sortChannel chan jsonRow,
+	filterValues map[string]interface{}) {
 
 	defer wg.Done()
 
@@ -68,14 +92,16 @@ func findMatchInFile(
 			panic(err)
 		}
 		wg.Add(1)
-		go filterJSON(r, pattern, sortChannel, wg)
+		go filterJSON(
+			r, pattern, sortChannel, wg, filterValues)
 	}
 }
 
 func findMatches(
 	pattern *regexp.Regexp,
 	waitGroup *sync.WaitGroup,
-	sortChannel chan jsonRow) filepath.WalkFunc {
+	sortChannel chan jsonRow,
+	filterValues map[string]interface{}) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			panic(err)
@@ -89,7 +115,8 @@ func findMatches(
 				pattern,
 				path,
 				waitGroup,
-				sortChannel)
+				sortChannel,
+				filterValues)
 		}
 		return nil
 	}
@@ -106,6 +133,11 @@ func main() {
 		"./",
 		"File or directory to search in. Defaults to current directory.")
 
+	practiceIDPtr := flag.Int(
+		"practice_id",
+		-1,
+		"Practice ID to filter on.")
+
 	// TODO(nickhil): add real options here
 	// remove json filter value
 	flag.Parse()
@@ -113,6 +145,12 @@ func main() {
 	if *patternPtr == "" {
 		fmt.Println("Please enter a non-empty string for the pattern argument.")
 		return
+	}
+
+	filterValues := make(map[string]interface{})
+
+	if *practiceIDPtr != -1 {
+		filterValues["practice_id"] = *practiceIDPtr
 	}
 
 	queue := make(PriorityQueue, 0)
@@ -132,7 +170,7 @@ func main() {
 	err := filepath.Walk(
 		*filenamePtr,
 		findMatches(
-			pattern, &waitGroup, sortChannel))
+			pattern, &waitGroup, sortChannel, filterValues))
 
 	if err != nil {
 		panic(err)
