@@ -24,8 +24,18 @@ func practiceMatches(row jsonRow, filter map[string]interface{}) bool {
 	return true
 }
 
+func requestIDMatches(row jsonRow, filter map[string]interface{}) bool {
+	message := (row["message"]).(map[string]interface{})
+	requestID, _ := message["request_id"]
+	filterRequestID, filterPresent := filter["request_id"]
+	if filterPresent && filterRequestID != requestID {
+		return false
+	}
+	return true
+}
+
 func rowMatchesFilters(row jsonRow, filter map[string]interface{}) bool {
-	return practiceMatches(row, filter)
+	return practiceMatches(row, filter) && requestIDMatches(row, filter)
 }
 
 func filterJSON(
@@ -138,6 +148,11 @@ func main() {
 		-1,
 		"Practice ID to filter on.")
 
+	requestIDPtr := flag.String(
+		"request_id",
+		"",
+		"Request ID to filter on.")
+
 	// TODO(nickhil): add real options here
 	// remove json filter value
 	flag.Parse()
@@ -151,6 +166,10 @@ func main() {
 
 	if *practiceIDPtr != -1 {
 		filterValues["practice_id"] = *practiceIDPtr
+	}
+
+	if *requestIDPtr != "" {
+		filterValues["request_id"] = *requestIDPtr
 	}
 
 	queue := make(PriorityQueue, 0)
