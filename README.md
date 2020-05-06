@@ -1,7 +1,10 @@
 # gogrep
 Regex matching tool implemented in Golang.
 
-## TODO
-- JSON parsing
-- Inputs for filtering / sorting based on field
-- Benchmark and optimize
+## Build and Run
+```
+$ cd gogrep
+$ go build .
+$ ls 
+# README.md       gogrep          main.go         pq.go           test
+```
