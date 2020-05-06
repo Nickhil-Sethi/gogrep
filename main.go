@@ -13,7 +13,7 @@ import (
 
 type jsonRow map[string]interface{}
 
-func practiceMatches(row jsonRow, filter map[string]interface{}) bool {
+func practiceIDMatches(row jsonRow, filter map[string]interface{}) bool {
 	message := (row["message"]).(map[string]interface{})
 	practiceID, _ := message["practice_id"]
 	rowPracticeID := int(practiceID.(float64))
@@ -35,7 +35,7 @@ func requestIDMatches(row jsonRow, filter map[string]interface{}) bool {
 }
 
 func rowMatchesFilters(row jsonRow, filter map[string]interface{}) bool {
-	return practiceMatches(row, filter) && requestIDMatches(row, filter)
+	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
 func filterJSON(
@@ -162,6 +162,13 @@ func main() {
 		return
 	}
 
+	pattern := regexp.MustCompile(
+		*patternPtr)
+
+	// practiceID and requiestID filters (and maybe more!)
+	// stored here. If practiceID or requestID
+	// are present, rows which do not match on
+	// either field will be filtered out.
 	filterValues := make(map[string]interface{})
 
 	if *practiceIDPtr != -1 {
@@ -172,20 +179,25 @@ func main() {
 		filterValues["request_id"] = *requestIDPtr
 	}
 
+	// a priority queue keeps our
+	// results in sorted order at
+	// all times. the queue receives
+	// new entries via sortChannel
 	queue := make(PriorityQueue, 0)
 	sortChannel := make(chan jsonRow, 100)
 
-	// blocks until all rows
-	// from all files have been added
-	// to the heap
+	// a wait group blocks
+	// the printing function
+	// until all lines have been
+	// processed. see below
 	var waitGroup sync.WaitGroup
 
-	// continually sorting
-	// the results in the backgroud
+	// this goroutine continually sorts
+	// rows by timestamp in the background
 	go mergeResults(
 		sortChannel, &waitGroup, &queue)
 
-	pattern := regexp.MustCompile(*patternPtr)
+	// walk the directory / file recursively
 	err := filepath.Walk(
 		*filenamePtr,
 		findMatches(
@@ -195,6 +207,8 @@ func main() {
 		panic(err)
 	}
 
+	// blocks until all rows in all
+	// files have been processed.
 	waitGroup.Wait()
 	close(sortChannel)
 
