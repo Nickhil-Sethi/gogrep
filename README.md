@@ -6,5 +6,5 @@ Regex matching tool implemented in Golang.
 $ cd gogrep
 $ go build .
 $ ls 
-# README.md       gogrep          main.go         pq.go           test
+$ README.md       gogrep          main.go         pq.go           test
 ```
