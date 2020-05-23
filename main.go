@@ -153,8 +153,6 @@ func main() {
 		"",
 		"Request ID to filter on.")
 
-	// TODO(nickhil): add real options here
-	// remove json filter value
 	flag.Parse()
 
 	if *patternPtr == "" {
