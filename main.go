@@ -1,13 +1,16 @@
 package main
 
 import (
+	"compress/gzip"
 	"container/heap"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -93,8 +96,14 @@ func findMatchInFile(
 
 	// TODO(nickhil) : add
 	// gzip functionality here
+	var reader io.Reader
+	if strings.Contains(path, ".gz") {
+		reader, _ = gzip.NewReader(file)
+	} else {
+		reader = file
+	}
 
-	dec := json.NewDecoder(file)
+	dec := json.NewDecoder(reader)
 	for dec.More() {
 		var r jsonRow
 		err := dec.Decode(&r)
