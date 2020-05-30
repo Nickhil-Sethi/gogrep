@@ -94,11 +94,15 @@ func findMatchInFile(
 	}
 	defer file.Close()
 
-	// TODO(nickhil) : add
-	// gzip functionality here
+	// detect if the file is a
+	// zlib compressed file and
+	// automatically decompress
 	var reader io.Reader
 	if strings.Contains(path, ".gz") {
-		reader, _ = gzip.NewReader(file)
+		reader, err = gzip.NewReader(file)
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		reader = file
 	}
