@@ -21,3 +21,9 @@ $ ./gogrep --pattern "hulk" --path ./test/
 { "message":{ "asctime":"2020-05-03 19:30:12,882", "message":"hulk" "practice_id":1204712973, "request_id":"887449ef-4c93-863c-03a503a227fc",
 "user_id":919888959 } }
 ```
+
+## TODO
+
+More helpful error handling. For example we see this when given a directory which can't be parsed.
+
+```panic: invalid character 'r' looking for beginning of value``` 
