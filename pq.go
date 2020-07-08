@@ -8,13 +8,14 @@ import (
 
 // An Item is something we manage in a priority queue.
 type Item struct {
-	value    jsonRow // The value of the item; arbitrary.
-	priority string  // The priority of the item in the queue.
-	// The index is needed by update and is maintained by the heap.Interface methods.
-	index int // The index of the item in the heap.
+	value    jsonRow
+	priority string
+	// The index is needed by update and
+	// is maintained by the heap.Interface methods.
+	index int
 }
 
-// PriorityQueue interface
+// PriorityQueue list of pointers to item structs
 type PriorityQueue []*Item
 
 func (pq PriorityQueue) Len() int { return len(pq) }
