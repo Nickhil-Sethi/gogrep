@@ -91,7 +91,8 @@ func findMatchInFile(
 
 	file, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Could not open file %s", path)
+		os.Exit(1)
 	}
 	defer file.Close()
 
