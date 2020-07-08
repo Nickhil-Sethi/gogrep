@@ -149,12 +149,12 @@ func main() {
 	patternPtr := flag.String(
 		"pattern",
 		"",
-		"Pattern to search for")
+		"Pattern to search for. (required)")
 
 	filenamePtr := flag.String(
 		"path",
 		"./",
-		"File or directory to search in. Defaults to current directory.")
+		"File or directory to search in.")
 
 	practiceIDPtr := flag.Int(
 		"practice_id",
@@ -166,11 +166,22 @@ func main() {
 		"",
 		"Request ID to filter on.")
 
+	helpPtr := flag.Bool(
+		"help",
+		false,
+		"Print help message.")
+
 	flag.Parse()
+
+	if *helpPtr {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
 
 	if *patternPtr == "" {
 		fmt.Println("Please enter a non-empty string for the pattern argument.")
-		return
+		flag.PrintDefaults()
+		os.Exit(0)
 	}
 
 	pattern := regexp.MustCompile(
