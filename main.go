@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -107,12 +108,13 @@ func findMatchInFile(
 		reader = file
 	}
 
-	dec := json.NewDecoder(reader)
-	for dec.More() {
+	decoder := json.NewDecoder(reader)
+	for decoder.More() {
 		var r jsonRow
-		err := dec.Decode(&r)
+		err := decoder.Decode(&r)
 		if err != nil {
-			panic(err)
+			log.Fatalf("Could not parse %s", path)
+			os.Exit(1)
 		}
 		wg.Add(1)
 		go filterJSON(
