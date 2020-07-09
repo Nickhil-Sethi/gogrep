@@ -155,6 +155,60 @@ func findMatches(
 	}
 }
 
+func goGrepIt(
+	filename string,
+	pattern *regexp.Regexp,
+	filterValues map[string]interface{}) {
+
+	// a priority queue keeps our
+	// results in sorted order at
+	// all times. the queue receives
+	// new entries via sortChannel
+	queue := make(PriorityQueue, 0)
+	sortChannel := make(chan jsonRow, 100)
+
+	// a wait group blocks
+	// the printing function
+	// until all lines have been
+	// processed. see below
+	var waitGroup sync.WaitGroup
+
+	// this goroutine continually sorts
+	// rows by timestamp in the background
+	go mergeResults(
+		sortChannel, &waitGroup, &queue)
+
+	// walk the directory / file recursively
+	err := filepath.Walk(
+		filename,
+		findMatches(
+			pattern,
+			&waitGroup,
+			sortChannel,
+			filterValues))
+
+	if err != nil {
+		log.Fatalf("Error walking file tree\n%s", err)
+		os.Exit(1)
+	}
+
+	// blocks until all rows in all
+	// files have been processed.
+	waitGroup.Wait()
+	close(sortChannel)
+
+	for queue.Len() > 0 {
+		item := heap.Pop(&queue).(*Item)
+		value := item.value
+		jsonified, parseErr := json.Marshal(value)
+		if parseErr != nil {
+			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
+			os.Exit(1)
+		}
+		fmt.Println(string(jsonified))
+	}
+}
+
 func main() {
 	patternPtr := flag.String(
 		"pattern",
@@ -216,48 +270,5 @@ func main() {
 		filterValues["request_id"] = *requestIDPtr
 	}
 
-	// a priority queue keeps our
-	// results in sorted order at
-	// all times. the queue receives
-	// new entries via sortChannel
-	queue := make(PriorityQueue, 0)
-	sortChannel := make(chan jsonRow, 100)
-
-	// a wait group blocks
-	// the printing function
-	// until all lines have been
-	// processed. see below
-	var waitGroup sync.WaitGroup
-
-	// this goroutine continually sorts
-	// rows by timestamp in the background
-	go mergeResults(
-		sortChannel, &waitGroup, &queue)
-
-	// walk the directory / file recursively
-	err := filepath.Walk(
-		*filenamePtr,
-		findMatches(
-			pattern, &waitGroup, sortChannel, filterValues))
-
-	if err != nil {
-		log.Fatalf("Error walking file tree\n%s", err)
-		os.Exit(1)
-	}
-
-	// blocks until all rows in all
-	// files have been processed.
-	waitGroup.Wait()
-	close(sortChannel)
-
-	for queue.Len() > 0 {
-		item := heap.Pop(&queue).(*Item)
-		value := item.value
-		jsonified, parseErr := json.Marshal(value)
-		if parseErr != nil {
-			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
-			os.Exit(1)
-		}
-		fmt.Println(string(jsonified))
-	}
+	goGrepIt(*filenamePtr, pattern, filterValues)
 }
