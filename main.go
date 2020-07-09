@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -130,7 +131,8 @@ func findMatches(
 	filterValues map[string]interface{}) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			panic(err)
+			log.Fatalf("Error in walking file %s\n%s", path, err)
+			runtime.Goexit()
 		}
 		switch mode := info.Mode(); {
 		case mode.IsDir():
@@ -234,7 +236,8 @@ func main() {
 			pattern, &waitGroup, sortChannel, filterValues))
 
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error walking file tree\n%s", err)
+		os.Exit(1)
 	}
 
 	// blocks until all rows in all
