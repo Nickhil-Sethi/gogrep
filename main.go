@@ -155,7 +155,7 @@ func findMatches(
 func goGrepIt(
 	filename string,
 	pattern *regexp.Regexp,
-	filterValues map[string]interface{}) {
+	filterValues map[string]interface{}) []string {
 
 	// a priority queue keeps our
 	// results in sorted order at
@@ -193,6 +193,8 @@ func goGrepIt(
 	waitGroup.Wait()
 	close(sortChannel)
 
+	results := []string{}
+
 	for queue.Len() > 0 {
 		item := heap.Pop(&queue).(*Item)
 		value := item.value
@@ -200,8 +202,10 @@ func goGrepIt(
 		if parseErr != nil {
 			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
 		}
-		fmt.Println(string(jsonified))
+		results = append(results, string(jsonified))
+		// fmt.Println(string(jsonified))
 	}
+	return results
 }
 
 func main() {
@@ -264,5 +268,8 @@ func main() {
 		filterValues["request_id"] = *requestIDPtr
 	}
 
-	goGrepIt(*filenamePtr, pattern, filterValues)
+	results := goGrepIt(*filenamePtr, pattern, filterValues)
+	for row := range results {
+		fmt.Println(row)
+	}
 }
