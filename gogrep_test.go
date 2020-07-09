@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestGoGrep(t *testing.T) {
+func TestGoGrepIt(t *testing.T) {
 	filter := make(map[string]interface{})
 	goGrepIt(
 		"./test/",
