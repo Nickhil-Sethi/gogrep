@@ -101,10 +101,15 @@ func findMatchInFile(
 	// zlib compressed file and
 	// automatically decompress
 	var reader io.Reader
+	// TODO(nickhil) : change this to
+	// detect gzipping based on file contents
+	// rather than .gz extension
 	if strings.Contains(path, ".gz") {
 		reader, err = gzip.NewReader(file)
 		if err != nil {
-			panic(err)
+			log.Fatalf(
+				"Error unzipping file %s\n%s", path, err)
+			os.Exit(1)
 		}
 	} else {
 		reader = file
