@@ -93,7 +93,6 @@ func findMatchInFile(
 	file, err := os.Open(path)
 	if err != nil {
 		log.Fatalf("Could not open file %s", path)
-		os.Exit(1)
 	}
 	defer file.Close()
 
@@ -109,7 +108,6 @@ func findMatchInFile(
 		if err != nil {
 			log.Fatalf(
 				"Error unzipping file %s\n%s", path, err)
-			os.Exit(1)
 		}
 	} else {
 		reader = file
@@ -121,7 +119,6 @@ func findMatchInFile(
 		err := decoder.Decode(&r)
 		if err != nil {
 			log.Fatalf("Could not parse %s", path)
-			os.Exit(1)
 		}
 		wg.Add(1)
 		go filterJSON(
@@ -189,7 +186,6 @@ func goGrepIt(
 
 	if err != nil {
 		log.Fatalf("Error walking file tree\n%s", err)
-		os.Exit(1)
 	}
 
 	// blocks until all rows in all
@@ -203,7 +199,6 @@ func goGrepIt(
 		jsonified, parseErr := json.Marshal(value)
 		if parseErr != nil {
 			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
-			os.Exit(1)
 		}
 		fmt.Println(string(jsonified))
 	}
@@ -253,7 +248,6 @@ func main() {
 
 	if compileErr != nil {
 		log.Fatalf("Could not compile regex %s", *patternPtr)
-		os.Exit(1)
 	}
 
 	// practiceID and requiestID filters (and maybe more!)
