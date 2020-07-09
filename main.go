@@ -187,8 +187,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	pattern := regexp.MustCompile(
+	pattern, compileErr := regexp.Compile(
 		*patternPtr)
+
+	if compileErr != nil {
+		log.Fatalf("Could not compile regex %s", *patternPtr)
+		os.Exit(1)
+	}
 
 	// practiceID and requiestID filters (and maybe more!)
 	// stored here. If practiceID or requestID
