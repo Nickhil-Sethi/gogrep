@@ -253,7 +253,11 @@ func main() {
 	for queue.Len() > 0 {
 		item := heap.Pop(&queue).(*Item)
 		value := item.value
-		jsonified, _ := json.Marshal(value)
+		jsonified, parseErr := json.Marshal(value)
+		if parseErr != nil {
+			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
+			os.Exit(1)
+		}
 		fmt.Println(string(jsonified))
 	}
 }
