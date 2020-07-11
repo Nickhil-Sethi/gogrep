@@ -203,7 +203,6 @@ func goGrepIt(
 			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
 		}
 		results = append(results, string(jsonified))
-		// fmt.Println(string(jsonified))
 	}
 	return results
 }
@@ -268,7 +267,9 @@ func main() {
 		filterValues["request_id"] = *requestIDPtr
 	}
 
-	results := goGrepIt(*filenamePtr, pattern, filterValues)
+	results := goGrepIt(
+		*filenamePtr, pattern, filterValues)
+
 	for row := range results {
 		fmt.Println(row)
 	}
