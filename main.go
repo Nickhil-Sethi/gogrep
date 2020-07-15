@@ -18,6 +18,11 @@ import (
 
 type jsonRow map[string]interface{}
 
+type resultRow struct {
+	stringContent string
+	jsonContent   jsonRow
+}
+
 func practiceIDMatches(row jsonRow, filter map[string]interface{}) bool {
 	message := (row["message"]).(map[string]interface{})
 	practiceID, _ := message["practice_id"]
@@ -43,10 +48,10 @@ func rowMatchesFilters(row jsonRow, filter map[string]interface{}) bool {
 	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
-func filterJSON(
+func filterRow(
 	row jsonRow,
 	pattern *regexp.Regexp,
-	sortChannel chan jsonRow,
+	sortChannel chan resultRow,
 	wg *sync.WaitGroup,
 	filterValues map[string]interface{}) {
 
@@ -71,6 +76,7 @@ func mergeResults(
 	pq *PriorityQueue) {
 	for match := range sortChannel {
 		message := (match["message"]).(map[string]interface{})
+		// case to time
 		timestamp := (message["asctime"]).(string)
 		item := &Item{
 			value:    match,
@@ -85,7 +91,7 @@ func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
 	wg *sync.WaitGroup,
-	sortChannel chan jsonRow,
+	sortChannel chan resultRow,
 	filterValues map[string]interface{}) {
 
 	defer wg.Done()
@@ -121,7 +127,7 @@ func findMatchInFile(
 			log.Fatalf("Could not parse %s", path)
 		}
 		wg.Add(1)
-		go filterJSON(
+		go filterRow(
 			r, pattern, sortChannel, wg, filterValues)
 	}
 }
@@ -129,7 +135,7 @@ func findMatchInFile(
 func findMatches(
 	pattern *regexp.Regexp,
 	waitGroup *sync.WaitGroup,
-	sortChannel chan jsonRow,
+	sortChannel chan resultRow,
 	filterValues map[string]interface{}) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -162,7 +168,7 @@ func goGrepIt(
 	// all times. the queue receives
 	// new entries via sortChannel
 	queue := make(PriorityQueue, 0)
-	sortChannel := make(chan jsonRow, 100)
+	sortChannel := make(chan resultRow, 100)
 
 	// a wait group blocks
 	// the printing function
@@ -233,6 +239,11 @@ func main() {
 		false,
 		"Print help message.")
 
+	jsonPtr := flag.Bool(
+		"json",
+		false,
+		"Parse file as newline separated json.")
+
 	flag.Parse()
 
 	if *helpPtr {
@@ -251,6 +262,11 @@ func main() {
 
 	if compileErr != nil {
 		log.Fatalf("Could not compile regex %s", *patternPtr)
+	}
+
+	useJSON := *jsonPtr
+	if !useJSON && ((*practiceIDPtr != -1) || (*requestIDPtr != "")) {
+		log.Fatal("To filter on fields, use the --json flag.")
 	}
 
 	// practiceID and requiestID filters (and maybe more!)
