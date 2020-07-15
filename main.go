@@ -60,9 +60,17 @@ func filterRow(
 		wg.Done()
 		return
 	}
-	fmt.Print(row)
-	b, _ := json.Marshal(row)
-	match := pattern.Find(b)
+
+	var rowBytes []byte
+	var match []byte
+
+	if parseJSON {
+		rowBytes, _ = json.Marshal(row.jsonContent)
+	} else {
+		rowBytes = []byte(row.stringContent)
+	}
+
+	match = pattern.Find(rowBytes)
 	if match == nil {
 		wg.Done()
 		return
