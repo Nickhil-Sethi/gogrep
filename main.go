@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"compress/gzip"
 	"container/heap"
 	"encoding/json"
@@ -11,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 )
@@ -49,17 +49,18 @@ func rowMatchesFilters(row jsonRow, filter map[string]interface{}) bool {
 }
 
 func filterRow(
-	row jsonRow,
+	row resultRow,
 	pattern *regexp.Regexp,
 	sortChannel chan resultRow,
 	wg *sync.WaitGroup,
+	parseJSON bool,
 	filterValues map[string]interface{}) {
 
-	if !rowMatchesFilters(row, filterValues) {
+	if parseJSON && !rowMatchesFilters(row.jsonContent, filterValues) {
 		wg.Done()
 		return
 	}
-
+	fmt.Print(row)
 	b, _ := json.Marshal(row)
 	match := pattern.Find(b)
 	if match == nil {
@@ -71,11 +72,12 @@ func filterRow(
 }
 
 func mergeResults(
-	sortChannel chan jsonRow,
+	sortChannel chan resultRow,
 	waitGroup *sync.WaitGroup,
-	pq *PriorityQueue) {
+	pq *PriorityQueue,
+	parseJSON bool) {
 	for match := range sortChannel {
-		message := (match["message"]).(map[string]interface{})
+		message := (match.jsonContent["message"]).(map[string]interface{})
 		// case to time
 		timestamp := (message["asctime"]).(string)
 		item := &Item{
@@ -87,11 +89,68 @@ func mergeResults(
 	}
 }
 
+func iterLinesJSON(
+	reader *io.Reader,
+	path string,
+	pattern *regexp.Regexp,
+	wg *sync.WaitGroup,
+	sortChannel chan resultRow,
+	filterValues map[string]interface{}) {
+
+	decoder := json.NewDecoder(*reader)
+	for decoder.More() {
+		var r jsonRow
+		err := decoder.Decode(&r)
+		if err != nil {
+			log.Fatalf("Could not parse %s", path)
+		}
+		wg.Add(1)
+		row := resultRow{
+			jsonContent:   r,
+			stringContent: "",
+		}
+		go filterRow(
+			row,
+			pattern,
+			sortChannel,
+			wg,
+			true,
+			filterValues)
+	}
+}
+
+func iterLinesPlain(
+	reader *io.Reader,
+	path string,
+	pattern *regexp.Regexp,
+	wg *sync.WaitGroup,
+	sortChannel chan resultRow,
+	filterValues map[string]interface{}) {
+
+	scanner := bufio.NewScanner(*reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		row := resultRow{
+			jsonContent:   make(map[string]interface{}),
+			stringContent: line,
+		}
+		wg.Add(1)
+		go filterRow(
+			row,
+			pattern,
+			sortChannel,
+			wg,
+			false,
+			filterValues)
+	}
+}
+
 func findMatchInFile(
 	pattern *regexp.Regexp,
 	path string,
 	wg *sync.WaitGroup,
 	sortChannel chan resultRow,
+	parseJSON bool,
 	filterValues map[string]interface{}) {
 
 	defer wg.Done()
@@ -119,16 +178,22 @@ func findMatchInFile(
 		reader = file
 	}
 
-	decoder := json.NewDecoder(reader)
-	for decoder.More() {
-		var r jsonRow
-		err := decoder.Decode(&r)
-		if err != nil {
-			log.Fatalf("Could not parse %s", path)
-		}
-		wg.Add(1)
-		go filterRow(
-			r, pattern, sortChannel, wg, filterValues)
+	if parseJSON {
+		iterLinesJSON(
+			&reader,
+			path,
+			pattern,
+			wg,
+			sortChannel,
+			filterValues)
+	} else {
+		iterLinesPlain(
+			&reader,
+			path,
+			pattern,
+			wg,
+			sortChannel,
+			filterValues)
 	}
 }
 
@@ -136,11 +201,11 @@ func findMatches(
 	pattern *regexp.Regexp,
 	waitGroup *sync.WaitGroup,
 	sortChannel chan resultRow,
+	parseJSON bool,
 	filterValues map[string]interface{}) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Fatalf("Error in walking file %s\n%s", path, err)
-			runtime.Goexit()
 		}
 		switch mode := info.Mode(); {
 		case mode.IsDir():
@@ -152,6 +217,7 @@ func findMatches(
 				path,
 				waitGroup,
 				sortChannel,
+				parseJSON,
 				filterValues)
 		}
 		return nil
@@ -161,6 +227,7 @@ func findMatches(
 func goGrepIt(
 	filename string,
 	pattern *regexp.Regexp,
+	parseJSON bool,
 	filterValues map[string]interface{}) []string {
 
 	// a priority queue keeps our
@@ -179,7 +246,10 @@ func goGrepIt(
 	// this goroutine continually sorts
 	// rows by timestamp in the background
 	go mergeResults(
-		sortChannel, &waitGroup, &queue)
+		sortChannel,
+		&waitGroup,
+		&queue,
+		parseJSON)
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
@@ -188,6 +258,7 @@ func goGrepIt(
 			pattern,
 			&waitGroup,
 			sortChannel,
+			parseJSON,
 			filterValues))
 
 	if err != nil {
@@ -264,8 +335,8 @@ func main() {
 		log.Fatalf("Could not compile regex %s", *patternPtr)
 	}
 
-	useJSON := *jsonPtr
-	if !useJSON && ((*practiceIDPtr != -1) || (*requestIDPtr != "")) {
+	parseJSON := *jsonPtr
+	if !parseJSON && ((*practiceIDPtr != -1) || (*requestIDPtr != "")) {
 		log.Fatal("To filter on fields, use the --json flag.")
 	}
 
@@ -284,7 +355,10 @@ func main() {
 	}
 
 	results := goGrepIt(
-		*filenamePtr, pattern, filterValues)
+		*filenamePtr,
+		pattern,
+		parseJSON,
+		filterValues)
 
 	for row := range results {
 		fmt.Println(row)
