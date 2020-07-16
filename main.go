@@ -16,6 +16,8 @@ import (
 	"sync"
 )
 
+// an unfortunate hack to tolerate
+// unstructured JSON
 type jsonRow map[string]interface{}
 
 type resultRow struct {
@@ -23,40 +25,51 @@ type resultRow struct {
 	jsonContent   jsonRow
 }
 
-func practiceIDMatches(row jsonRow, filter map[string]interface{}) bool {
+type filterObject struct {
+	practiceID int
+	requestID  string
+}
+
+type searchParameters struct {
+	pattern      *regexp.Regexp
+	path         string
+	parseJSON    bool
+	filterValues filterObject
+}
+
+func practiceIDMatches(row jsonRow, filter filterObject) bool {
 	message := (row["message"]).(map[string]interface{})
 	practiceID, _ := message["practice_id"]
 	rowPracticeID := int(practiceID.(float64))
-	filterPracticeID, filterPresent := filter["practice_id"]
-	if filterPresent && filterPracticeID != rowPracticeID {
+	filterPresent := (filter.practiceID != -1)
+	if filterPresent && filter.practiceID != rowPracticeID {
 		return false
 	}
 	return true
 }
 
-func requestIDMatches(row jsonRow, filter map[string]interface{}) bool {
+func requestIDMatches(row jsonRow, filter filterObject) bool {
 	message := (row["message"]).(map[string]interface{})
 	requestID, _ := message["request_id"]
-	filterRequestID, filterPresent := filter["request_id"]
-	if filterPresent && filterRequestID != requestID {
+	filterPresent := (filter.requestID != "")
+	if filterPresent && filter.requestID != requestID {
 		return false
 	}
 	return true
 }
 
-func rowMatchesFilters(row jsonRow, filter map[string]interface{}) bool {
+func rowMatchesFilters(row jsonRow, filter filterObject) bool {
 	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
 func filterRow(
+	searchParams searchParameters,
 	row resultRow,
-	pattern *regexp.Regexp,
-	sortChannel chan resultRow,
 	wg *sync.WaitGroup,
-	parseJSON bool,
-	filterValues map[string]interface{}) {
+	sortChannel chan resultRow) {
 
-	if parseJSON && !rowMatchesFilters(row.jsonContent, filterValues) {
+	if searchParams.parseJSON && !rowMatchesFilters(
+		row.jsonContent, searchParams.filterValues) {
 		wg.Done()
 		return
 	}
@@ -64,13 +77,13 @@ func filterRow(
 	var rowBytes []byte
 	var match []byte
 
-	if parseJSON {
+	if searchParams.parseJSON {
 		rowBytes, _ = json.Marshal(row.jsonContent)
 	} else {
 		rowBytes = []byte(row.stringContent)
 	}
 
-	match = pattern.Find(rowBytes)
+	match = searchParams.pattern.Find(rowBytes)
 	if match == nil {
 		wg.Done()
 		return
@@ -98,19 +111,18 @@ func mergeResults(
 }
 
 func iterLinesJSON(
+	searchParams searchParameters,
+	filePath string,
 	reader *io.Reader,
-	path string,
-	pattern *regexp.Regexp,
 	wg *sync.WaitGroup,
-	sortChannel chan resultRow,
-	filterValues map[string]interface{}) {
+	sortChannel chan resultRow) {
 
 	decoder := json.NewDecoder(*reader)
 	for decoder.More() {
 		var r jsonRow
 		err := decoder.Decode(&r)
 		if err != nil {
-			log.Fatalf("Could not parse %s", path)
+			log.Fatalf("Could not parse %s", filePath)
 		}
 		wg.Add(1)
 		row := resultRow{
@@ -118,22 +130,19 @@ func iterLinesJSON(
 			stringContent: "",
 		}
 		go filterRow(
+			searchParams,
 			row,
-			pattern,
-			sortChannel,
 			wg,
-			true,
-			filterValues)
+			sortChannel)
 	}
 }
 
 func iterLinesPlain(
+	searchParams searchParameters,
+	filePath string,
 	reader *io.Reader,
-	path string,
-	pattern *regexp.Regexp,
 	wg *sync.WaitGroup,
-	sortChannel chan resultRow,
-	filterValues map[string]interface{}) {
+	sortChannel chan resultRow) {
 
 	scanner := bufio.NewScanner(*reader)
 	for scanner.Scan() {
@@ -144,28 +153,24 @@ func iterLinesPlain(
 		}
 		wg.Add(1)
 		go filterRow(
+			searchParams,
 			row,
-			pattern,
-			sortChannel,
 			wg,
-			false,
-			filterValues)
+			sortChannel)
 	}
 }
 
 func findMatchInFile(
-	pattern *regexp.Regexp,
-	path string,
+	filePath string,
+	searchParams searchParameters,
 	wg *sync.WaitGroup,
-	sortChannel chan resultRow,
-	parseJSON bool,
-	filterValues map[string]interface{}) {
+	sortChannel chan resultRow) {
 
 	defer wg.Done()
 
-	file, err := os.Open(path)
+	file, err := os.Open(filePath)
 	if err != nil {
-		log.Fatalf("Could not open file %s", path)
+		log.Fatalf("Could not open file %s", filePath)
 	}
 	defer file.Close()
 
@@ -176,41 +181,37 @@ func findMatchInFile(
 	// TODO(nickhil) : change this to
 	// detect gzipping based on file contents
 	// rather than .gz extension
-	if strings.Contains(path, ".gz") {
+	if strings.Contains(filePath, ".gz") {
 		reader, err = gzip.NewReader(file)
 		if err != nil {
 			log.Fatalf(
-				"Error unzipping file %s\n%s", path, err)
+				"Error unzipping file %s\n%s", filePath, err)
 		}
 	} else {
 		reader = file
 	}
 
-	if parseJSON {
+	if searchParams.parseJSON {
 		iterLinesJSON(
+			searchParams,
+			filePath,
 			&reader,
-			path,
-			pattern,
 			wg,
-			sortChannel,
-			filterValues)
+			sortChannel)
 	} else {
 		iterLinesPlain(
+			searchParams,
+			filePath,
 			&reader,
-			path,
-			pattern,
 			wg,
-			sortChannel,
-			filterValues)
+			sortChannel)
 	}
 }
 
 func findMatches(
-	pattern *regexp.Regexp,
+	searchParams searchParameters,
 	waitGroup *sync.WaitGroup,
-	sortChannel chan resultRow,
-	parseJSON bool,
-	filterValues map[string]interface{}) filepath.WalkFunc {
+	sortChannel chan resultRow) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Fatalf("Error in walking file %s\n%s", path, err)
@@ -221,22 +222,16 @@ func findMatches(
 		case mode.IsRegular():
 			waitGroup.Add(1)
 			go findMatchInFile(
-				pattern,
 				path,
+				searchParams,
 				waitGroup,
-				sortChannel,
-				parseJSON,
-				filterValues)
+				sortChannel)
 		}
 		return nil
 	}
 }
 
-func goGrepIt(
-	filename string,
-	pattern *regexp.Regexp,
-	parseJSON bool,
-	filterValues map[string]interface{}) []string {
+func goGrepIt(searchParams searchParameters) []string {
 
 	// a priority queue keeps our
 	// results in sorted order at
@@ -257,17 +252,15 @@ func goGrepIt(
 		sortChannel,
 		&waitGroup,
 		&queue,
-		parseJSON)
+		searchParams.parseJSON)
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
-		filename,
+		searchParams.path,
 		findMatches(
-			pattern,
+			searchParams,
 			&waitGroup,
-			sortChannel,
-			parseJSON,
-			filterValues))
+			sortChannel))
 
 	if err != nil {
 		log.Fatalf("Error walking file tree\n%s", err)
@@ -352,21 +345,22 @@ func main() {
 	// stored here. If practiceID or requestID
 	// are present, rows which do not match on
 	// either field will be filtered out.
-	filterValues := make(map[string]interface{})
+	filterValues := filterObject{}
 
 	if *practiceIDPtr != -1 {
-		filterValues["practice_id"] = *practiceIDPtr
+		filterValues.practiceID = *practiceIDPtr
 	}
 
 	if *requestIDPtr != "" {
-		filterValues["request_id"] = *requestIDPtr
+		filterValues.requestID = *requestIDPtr
 	}
 
-	results := goGrepIt(
-		*filenamePtr,
-		pattern,
-		parseJSON,
-		filterValues)
+	searchParams := searchParameters{
+		pattern:   pattern,
+		path:      *filenamePtr,
+		parseJSON: *jsonPtr,
+	}
+	results := goGrepIt(searchParams)
 
 	for row := range results {
 		fmt.Println(row)
