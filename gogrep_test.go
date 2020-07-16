@@ -9,12 +9,17 @@ import (
 )
 
 func TestGoGrepIt(t *testing.T) {
-	filter := make(map[string]interface{})
-	results := goGrepIt(
-		"./test/",
-		regexp.MustCompile("vulture"),
-		true,
-		filter)
+
+	searchParams := searchParameters{
+		path:      "./test",
+		pattern:   regexp.MustCompile("vulture"),
+		parseJSON: true,
+		filterValues: filterObject{
+			requestID:  "",
+			practiceID: -1,
+		},
+	}
+	results := goGrepIt(searchParams)
 
 	m := map[string]interface{}{"message": map[string]interface{}{
 		"asctime":     "2020-05-03 11:10:12,112",
@@ -27,7 +32,7 @@ func TestGoGrepIt(t *testing.T) {
 	var exp [1]string
 	exp[0] = string(strM)
 	if !reflect.DeepEqual(results, exp) {
-		fmt.Print("Unequal stuff ", results, exp)
+		fmt.Print("Unexpected results ", results, exp)
 		t.Fail()
 	}
 }
