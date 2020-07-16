@@ -163,10 +163,10 @@ func iterLinesPlain(
 func findMatchInFile(
 	filePath string,
 	searchParams searchParameters,
-	wg *sync.WaitGroup,
+	waitGroup *sync.WaitGroup,
 	sortChannel chan resultRow) {
 
-	defer wg.Done()
+	defer waitGroup.Done()
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -196,14 +196,14 @@ func findMatchInFile(
 			searchParams,
 			filePath,
 			&reader,
-			wg,
+			waitGroup,
 			sortChannel)
 	} else {
 		iterLinesPlain(
 			searchParams,
 			filePath,
 			&reader,
-			wg,
+			waitGroup,
 			sortChannel)
 	}
 }
@@ -212,9 +212,9 @@ func findMatches(
 	searchParams searchParameters,
 	waitGroup *sync.WaitGroup,
 	sortChannel chan resultRow) filepath.WalkFunc {
-	return func(path string, info os.FileInfo, err error) error {
+	return func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Fatalf("Error in walking file %s\n%s", path, err)
+			log.Fatalf("Error in walking file %s\n%s", filePath, err)
 		}
 		switch mode := info.Mode(); {
 		case mode.IsDir():
@@ -222,7 +222,7 @@ func findMatches(
 		case mode.IsRegular():
 			waitGroup.Add(1)
 			go findMatchInFile(
-				path,
+				filePath,
 				searchParams,
 				waitGroup,
 				sortChannel)
@@ -231,7 +231,7 @@ func findMatches(
 	}
 }
 
-func goGrepIt(searchParams searchParameters) []string {
+func findResults(searchParams searchParameters) []string {
 
 	// a priority queue keeps our
 	// results in sorted order at
@@ -360,7 +360,7 @@ func main() {
 		path:      *filenamePtr,
 		parseJSON: *jsonPtr,
 	}
-	results := goGrepIt(searchParams)
+	results := findResults(searchParams)
 
 	for row := range results {
 		fmt.Println(row)
