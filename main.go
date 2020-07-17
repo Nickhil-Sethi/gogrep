@@ -114,7 +114,7 @@ func iterLinesJSON(
 	searchParams searchParameters,
 	filePath string,
 	reader *io.Reader,
-	wg *sync.WaitGroup,
+	waitGroup *sync.WaitGroup,
 	sortChannel chan resultRow) {
 
 	decoder := json.NewDecoder(*reader)
@@ -124,7 +124,8 @@ func iterLinesJSON(
 		if err != nil {
 			log.Fatalf("Could not parse %s", filePath)
 		}
-		wg.Add(1)
+		waitGroup.Add(1)
+		// fmt.Print(r)
 		row := resultRow{
 			jsonContent:   r,
 			stringContent: "",
@@ -132,7 +133,7 @@ func iterLinesJSON(
 		go filterRow(
 			searchParams,
 			row,
-			wg,
+			waitGroup,
 			sortChannel)
 	}
 }
@@ -141,7 +142,7 @@ func iterLinesPlain(
 	searchParams searchParameters,
 	filePath string,
 	reader *io.Reader,
-	wg *sync.WaitGroup,
+	waitGroup *sync.WaitGroup,
 	sortChannel chan resultRow) {
 
 	scanner := bufio.NewScanner(*reader)
@@ -151,11 +152,11 @@ func iterLinesPlain(
 			jsonContent:   make(map[string]interface{}),
 			stringContent: line,
 		}
-		wg.Add(1)
+		waitGroup.Add(1)
 		go filterRow(
 			searchParams,
 			row,
-			wg,
+			waitGroup,
 			sortChannel)
 	}
 }
