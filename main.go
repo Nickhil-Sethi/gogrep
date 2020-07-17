@@ -361,9 +361,10 @@ func main() {
 		path:      *filenamePtr,
 		parseJSON: *jsonPtr,
 	}
-	results := findResults(searchParams)
 
+	results := findResults(searchParams)
+	encoder := json.NewEncoder(os.Stdout)
 	for row := range results {
-		fmt.Println(row)
+		encoder.Encode(row)
 	}
 }
