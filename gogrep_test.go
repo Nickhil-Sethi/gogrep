@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestGoGrepIt(t *testing.T) {
+func TestFindResults(t *testing.T) {
 
 	searchParams := searchParameters{
 		path:      "./test",
@@ -19,7 +19,7 @@ func TestGoGrepIt(t *testing.T) {
 			practiceID: -1,
 		},
 	}
-	results := goGrepIt(searchParams)
+	results := findResults(searchParams)
 
 	m := map[string]interface{}{"message": map[string]interface{}{
 		"asctime":     "2020-05-03 11:10:12,112",
