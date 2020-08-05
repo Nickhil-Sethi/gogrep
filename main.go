@@ -288,32 +288,32 @@ func findResults(searchParams searchParameters) []string {
 
 func main() {
 	patternPtr := flag.String(
-		"pattern",
+		"p",
 		"",
 		"Pattern to search for. (required)")
 
 	filenamePtr := flag.String(
-		"path",
+		"d",
 		"./",
 		"File or directory to search in.")
 
 	practiceIDPtr := flag.Int(
-		"practice_id",
+		"i",
 		-1,
 		"Practice ID to filter on.")
 
 	requestIDPtr := flag.String(
-		"request_id",
+		"r",
 		"",
 		"Request ID to filter on.")
 
 	helpPtr := flag.Bool(
-		"help",
+		"h",
 		false,
 		"Print help message.")
 
 	jsonPtr := flag.Bool(
-		"json",
+		"j",
 		false,
 		"Parse file as newline separated json.")
 
