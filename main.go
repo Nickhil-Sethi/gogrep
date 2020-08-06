@@ -225,9 +225,15 @@ func (s *searchRequest) findResults() []string {
 	for s.pq.Len() > 0 {
 		item := heap.Pop(s.pq).(*Item)
 		value := item.value
-		jsonified, parseErr := json.Marshal(value)
-		if parseErr != nil {
-			log.Fatalf("Something went wrong. Error parsing JSON from heap.")
+		var jsonified []byte
+		if s.parseJSON {
+			var parseErr error
+			jsonified, parseErr = json.Marshal(value.jsonContent)
+			if parseErr != nil {
+				log.Fatalf("Something went wrong. Error parsing JSON from heap.")
+			}
+		} else {
+			jsonified = []byte(value.stringContent)
 		}
 		results = append(results, string(jsonified))
 	}
