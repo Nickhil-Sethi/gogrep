@@ -30,11 +30,14 @@ type filterObject struct {
 	requestID  string
 }
 
-type searchParameters struct {
+type searchRequest struct {
 	pattern      *regexp.Regexp
 	path         string
 	parseJSON    bool
 	filterValues filterObject
+	waitGroup    *sync.WaitGroup
+	sortChannel  chan resultRow
+	pq           *PriorityQueue
 }
 
 func practiceIDMatches(row jsonRow, filter filterObject) bool {
@@ -62,42 +65,34 @@ func rowMatchesFilters(row jsonRow, filter filterObject) bool {
 	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
-func filterRow(
-	searchParams searchParameters,
-	row resultRow,
-	wg *sync.WaitGroup,
-	sortChannel chan resultRow) {
+func (s *searchRequest) filterRow(row resultRow) {
 
-	if searchParams.parseJSON && !rowMatchesFilters(
-		row.jsonContent, searchParams.filterValues) {
-		wg.Done()
+	if s.parseJSON && !rowMatchesFilters(
+		row.jsonContent, s.filterValues) {
+		s.waitGroup.Done()
 		return
 	}
 
 	var rowBytes []byte
 	var match []byte
 
-	if searchParams.parseJSON {
+	if s.parseJSON {
 		rowBytes, _ = json.Marshal(row.jsonContent)
 	} else {
 		rowBytes = []byte(row.stringContent)
 	}
 
-	match = searchParams.pattern.Find(rowBytes)
+	match = s.pattern.Find(rowBytes)
 	if match == nil {
-		wg.Done()
+		s.waitGroup.Done()
 		return
 	}
 
-	sortChannel <- row
+	s.sortChannel <- row
 }
 
-func mergeResults(
-	sortChannel chan resultRow,
-	waitGroup *sync.WaitGroup,
-	pq *PriorityQueue,
-	parseJSON bool) {
-	for match := range sortChannel {
+func (s *searchRequest) mergeResults() {
+	for match := range s.sortChannel {
 		message := (match.jsonContent["message"]).(map[string]interface{})
 		// case to time
 		timestamp := (message["asctime"]).(string)
@@ -105,17 +100,14 @@ func mergeResults(
 			value:    match,
 			priority: timestamp,
 		}
-		heap.Push(pq, item)
-		waitGroup.Done()
+		heap.Push(s.pq, item)
+		s.waitGroup.Done()
 	}
 }
 
-func iterLinesJSON(
-	searchParams searchParameters,
+func (s *searchRequest) iterLinesJSON(
 	filePath string,
-	reader *io.Reader,
-	waitGroup *sync.WaitGroup,
-	sortChannel chan resultRow) {
+	reader *io.Reader) {
 
 	decoder := json.NewDecoder(*reader)
 	for decoder.More() {
@@ -124,26 +116,20 @@ func iterLinesJSON(
 		if err != nil {
 			log.Fatalf("Could not parse %s", filePath)
 		}
-		waitGroup.Add(1)
+		s.waitGroup.Add(1)
 		// fmt.Print(r)
 		row := resultRow{
 			jsonContent:   r,
 			stringContent: "",
 		}
-		go filterRow(
-			searchParams,
-			row,
-			waitGroup,
-			sortChannel)
+		go s.filterRow(
+			row)
 	}
 }
 
-func iterLinesPlain(
-	searchParams searchParameters,
+func (s *searchRequest) iterLinesPlain(
 	filePath string,
-	reader *io.Reader,
-	waitGroup *sync.WaitGroup,
-	sortChannel chan resultRow) {
+	reader *io.Reader) {
 
 	scanner := bufio.NewScanner(*reader)
 	for scanner.Scan() {
@@ -152,22 +138,16 @@ func iterLinesPlain(
 			jsonContent:   make(map[string]interface{}),
 			stringContent: line,
 		}
-		waitGroup.Add(1)
-		go filterRow(
-			searchParams,
-			row,
-			waitGroup,
-			sortChannel)
+		s.waitGroup.Add(1)
+		go s.filterRow(
+			row)
 	}
 }
 
-func findMatchInFile(
-	filePath string,
-	searchParams searchParameters,
-	waitGroup *sync.WaitGroup,
-	sortChannel chan resultRow) {
+func (s *searchRequest) findMatchInFile(
+	filePath string) {
 
-	defer waitGroup.Done()
+	defer s.waitGroup.Done()
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -192,27 +172,18 @@ func findMatchInFile(
 		reader = file
 	}
 
-	if searchParams.parseJSON {
-		iterLinesJSON(
-			searchParams,
+	if s.parseJSON {
+		s.iterLinesJSON(
 			filePath,
-			&reader,
-			waitGroup,
-			sortChannel)
+			&reader)
 	} else {
-		iterLinesPlain(
-			searchParams,
+		s.iterLinesPlain(
 			filePath,
-			&reader,
-			waitGroup,
-			sortChannel)
+			&reader)
 	}
 }
 
-func findMatches(
-	searchParams searchParameters,
-	waitGroup *sync.WaitGroup,
-	sortChannel chan resultRow) filepath.WalkFunc {
+func (s *searchRequest) findMatches() filepath.WalkFunc {
 	return func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Fatalf("Error in walking file %s\n%s", filePath, err)
@@ -221,47 +192,24 @@ func findMatches(
 		case mode.IsDir():
 			return nil
 		case mode.IsRegular():
-			waitGroup.Add(1)
-			go findMatchInFile(
-				filePath,
-				searchParams,
-				waitGroup,
-				sortChannel)
+			s.waitGroup.Add(1)
+			go s.findMatchInFile(
+				filePath)
 		}
 		return nil
 	}
 }
 
-func findResults(searchParams searchParameters) []string {
-
-	// a priority queue keeps our
-	// results in sorted order at
-	// all times. the queue receives
-	// new entries via sortChannel
-	queue := make(PriorityQueue, 0)
-	sortChannel := make(chan resultRow, 100)
-
-	// a wait group blocks
-	// the printing function
-	// until all lines have been
-	// processed. see below
-	var waitGroup sync.WaitGroup
+func (s *searchRequest) findResults() []string {
 
 	// this goroutine continually sorts
 	// rows by timestamp in the background
-	go mergeResults(
-		sortChannel,
-		&waitGroup,
-		&queue,
-		searchParams.parseJSON)
+	go s.mergeResults()
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
-		searchParams.path,
-		findMatches(
-			searchParams,
-			&waitGroup,
-			sortChannel))
+		s.path,
+		s.findMatches())
 
 	if err != nil {
 		log.Fatalf("Error walking file tree\n%s", err)
@@ -269,13 +217,13 @@ func findResults(searchParams searchParameters) []string {
 
 	// blocks until all rows in all
 	// files have been processed.
-	waitGroup.Wait()
-	close(sortChannel)
+	s.waitGroup.Wait()
+	close(s.sortChannel)
 
 	results := []string{}
 
-	for queue.Len() > 0 {
-		item := heap.Pop(&queue).(*Item)
+	for s.pq.Len() > 0 {
+		item := heap.Pop(s.pq).(*Item)
 		value := item.value
 		jsonified, parseErr := json.Marshal(value)
 		if parseErr != nil {
@@ -356,13 +304,19 @@ func main() {
 		filterValues.requestID = *requestIDPtr
 	}
 
-	searchParams := searchParameters{
-		pattern:   pattern,
-		path:      *filenamePtr,
-		parseJSON: *jsonPtr,
-	}
+	queue := make(PriorityQueue, 0)
+	sortChannel := make(chan resultRow, 100)
+	var waitGroup sync.WaitGroup
 
-	results := findResults(searchParams)
+	s := searchRequest{
+		pattern:     pattern,
+		path:        *filenamePtr,
+		parseJSON:   *jsonPtr,
+		waitGroup:   &waitGroup,
+		sortChannel: sortChannel,
+		pq:          &queue}
+
+	results := s.findResults()
 	encoder := json.NewEncoder(os.Stdout)
 	for row := range results {
 		encoder.Encode(row)
