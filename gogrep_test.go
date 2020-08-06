@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sync"
 	"testing"
 )
 
 func TestFindResults(t *testing.T) {
+	queue := make(PriorityQueue, 0)
+	sortChannel := make(chan resultRow, 100)
+	var waitGroup sync.WaitGroup
 
-	searchParams := searchParameters{
+	s := searchRequest{
 		path:      "./test",
 		pattern:   regexp.MustCompile("vulture"),
 		parseJSON: true,
@@ -18,8 +22,11 @@ func TestFindResults(t *testing.T) {
 			requestID:  "",
 			practiceID: -1,
 		},
+		waitGroup:   &waitGroup,
+		pq:          &queue,
+		sortChannel: sortChannel,
 	}
-	results := findResults(searchParams)
+	results := s.findResults()
 
 	m := map[string]interface{}{"message": map[string]interface{}{
 		"asctime":     "2020-05-03 11:10:12,112",
