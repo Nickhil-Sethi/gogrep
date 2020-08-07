@@ -1,8 +1,8 @@
 # gogrep
-Regex matching tool implemented in Golang.
+Fast parallel file search implemented in Golang.
 
 ## Design and Implementation
-Through the magic of the golang runtime, gogrep outperforms the native `grep` utility by using all cores simultaneously, parallelizing search accross each line in each file.
+Through the magic of the golang runtime, gogrep outperforms the native `grep` utility by using all cores simultaneously, parallelizing search accross each line in each file. (source?)
 
 More explicitly, gogrep uses goroutines to parallelize file search over a set of files. Given a set of search criteria (i.e. a regex, and optional practice id and request id), and a file path, and recursively walks the subtree searching each file for lines matching the search criteria. 
 
@@ -27,3 +27,8 @@ $ ./gogrep --pattern "hulk" --path ./test/
 More helpful error handling. For example we see this when given a directory which can't be parsed.
 
 ```panic: invalid character 'r' looking for beginning of value``` 
+
+Option to print filenames
+Option to pretty print json
+Flexible json filtering like jq
+Benchmark against linux kernel source tree
