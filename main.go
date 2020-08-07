@@ -338,29 +338,26 @@ func main() {
 	// either field will be filtered out.
 	filterValues := filterObject{}
 
-	if *practiceIDPtr != -1 {
-		filterValues.practiceID = *practiceIDPtr
-	}
-
-	if *requestIDPtr != "" {
-		filterValues.requestID = *requestIDPtr
-	}
+	filterValues.practiceID = *practiceIDPtr
+	filterValues.requestID = *requestIDPtr
 
 	queue := make(PriorityQueue, 0)
 	sortChannel := make(chan resultRow, 100)
 	var waitGroup sync.WaitGroup
 
 	s := searchRequest{
-		pattern:     pattern,
-		path:        *filenamePtr,
-		parseJSON:   *jsonPtr,
-		waitGroup:   &waitGroup,
-		sortChannel: sortChannel,
-		pq:          &queue}
+		pattern:      pattern,
+		path:         *filenamePtr,
+		parseJSON:    *jsonPtr,
+		filterValues: filterValues,
+		waitGroup:    &waitGroup,
+		sortChannel:  sortChannel,
+		pq:           &queue}
 
 	results := s.findResults()
-	encoder := json.NewEncoder(os.Stdout)
-	for row := range results {
-		encoder.Encode(row)
+	// encoder := json.NewEncoder(os.Stdout)
+	for _, row := range results {
+		// encoder.Encode(row)
+		fmt.Println(row)
 	}
 }
