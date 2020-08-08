@@ -132,9 +132,7 @@ func (s *searchRequest) mergeResults() {
 		var priority string
 		if s.parseJSON {
 			message := (match.jsonContent["message"]).(map[string]interface{})
-			// case to time
-			timestamp := (message["asctime"]).(string)
-			priority = timestamp
+			priority = (message["asctime"]).(string)
 		} else {
 			priority = match.stringContent
 		}
