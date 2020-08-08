@@ -129,12 +129,16 @@ func (s *searchRequest) filterRow(row resultRow) {
 
 func (s *searchRequest) mergeResults() {
 	for match := range s.sortChannel {
-		message := (match.jsonContent["message"]).(map[string]interface{})
-		// case to time
-		timestamp := (message["asctime"]).(string)
+		var priority string
+		if s.parseJSON {
+			message := (match.jsonContent["message"]).(map[string]interface{})
+			priority = (message["asctime"]).(string)
+		} else {
+			priority = match.stringContent
+		}
 		item := &Item{
 			value:    match,
-			priority: timestamp,
+			priority: priority,
 		}
 		heap.Push(s.pq, item)
 		s.waitGroup.Done()
