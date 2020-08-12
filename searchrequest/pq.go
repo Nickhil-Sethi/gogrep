@@ -1,5 +1,3 @@
-// contains priority queue
-// funtionality for sorting log rows
 package main
 
 import (
