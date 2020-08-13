@@ -250,9 +250,9 @@ func (s *SearchRequest) FindResults() []string {
 	sortChannel := make(chan ResultRow, 100)
 	var waitGroup sync.WaitGroup
 
-	s.pq = queue
+	s.pq = &queue
 	s.sortChannel = sortChannel
-	s.waitGroup = waitGroup
+	s.waitGroup = &waitGroup
 
 	// this goroutine continually sorts
 	// rows by timestamp in the background
