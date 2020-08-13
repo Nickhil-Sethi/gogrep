@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"sync"
 
 	"github.com/Nickhil-Sethi/gogrep/searchrequest"
 )
@@ -71,25 +70,18 @@ func main() {
 	// stored here. If practiceID or requestID
 	// are present, rows which do not match on
 	// either field will be filtered out.
-	filterValues := filterObject{}
+	filterValues := FilterObject{}
 
 	filterValues.practiceID = *practiceIDPtr
 	filterValues.requestID = *requestIDPtr
-
-	queue := make(PriorityQueue, 0)
-	sortChannel := make(chan resultRow, 100)
-	var waitGroup sync.WaitGroup
 
 	s := searchrequest.SearchRequest{
 		pattern:      pattern,
 		path:         *filenamePtr,
 		parseJSON:    *jsonPtr,
-		filterValues: filterValues,
-		waitGroup:    &waitGroup,
-		sortChannel:  sortChannel,
-		pq:           &queue}
+		filterValues: filterValues}
 
-	results := s.findResults()
+	results := s.FindResults()
 	// encoder := json.NewEncoder(os.Stdout)
 	for _, row := range results {
 		// encoder.Encode(row)

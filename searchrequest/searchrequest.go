@@ -60,25 +60,26 @@ func (j jsonRow) MarshalJSON() ([]byte, error) {
 type ResultRow struct {
 	stringContent string
 	jsonContent   jsonRow
+	FilePath      string
 }
 
-type filterObject struct {
+type FilterObject struct {
 	practiceID int
 	requestID  string
 }
 
 // SearchRequest : interface of search query
 type SearchRequest struct {
-	pattern      *regexp.Regexp
-	path         string
-	parseJSON    bool
-	filterValues filterObject
+	Pattern      *regexp.Regexp
+	Path         string
+	ParseJSON    bool
+	FilterValues FilterObject
 	waitGroup    *sync.WaitGroup
 	sortChannel  chan ResultRow
 	pq           *PriorityQueue
 }
 
-func practiceIDMatches(row jsonRow, filter filterObject) bool {
+func practiceIDMatches(row jsonRow, filter FilterObject) bool {
 	message := (row["message"]).(map[string]interface{})
 	practiceID, _ := message["practice_id"]
 	rowPracticeID := int(practiceID.(float64))
@@ -89,7 +90,7 @@ func practiceIDMatches(row jsonRow, filter filterObject) bool {
 	return true
 }
 
-func requestIDMatches(row jsonRow, filter filterObject) bool {
+func requestIDMatches(row jsonRow, filter FilterObject) bool {
 	message := (row["message"]).(map[string]interface{})
 	requestID, _ := message["request_id"]
 	filterPresent := (filter.requestID != "")
@@ -99,11 +100,11 @@ func requestIDMatches(row jsonRow, filter filterObject) bool {
 	return true
 }
 
-func rowMatchesFilters(row jsonRow, filter filterObject) bool {
+func rowMatchesFilters(row jsonRow, filter FilterObject) bool {
 	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
-func (s *SearchRequest) filterRow(row resultRow) {
+func (s *SearchRequest) filterRow(row ResultRow) {
 
 	if s.parseJSON && !rowMatchesFilters(
 		row.jsonContent, s.filterValues) {
@@ -176,7 +177,7 @@ func (s *SearchRequest) iterLinesPlain(
 	scanner := bufio.NewScanner(*reader)
 	for scanner.Scan() {
 		line := scanner.Text()
-		row := resultRow{
+		row := ResultRow{
 			jsonContent:   make(map[string]interface{}),
 			stringContent: line,
 		}
@@ -242,7 +243,16 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 	}
 }
 
-func (s *SearchRequest) findResults() []string {
+// FindResults returns results of executed query
+func (s *SearchRequest) FindResults() []string {
+
+	queue := make(PriorityQueue, 0)
+	sortChannel := make(chan ResultRow, 100)
+	var waitGroup sync.WaitGroup
+
+	s.pq = queue
+	s.sortChannel = sortChannel
+	s.waitGroup = waitGroup
 
 	// this goroutine continually sorts
 	// rows by timestamp in the background

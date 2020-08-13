@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sync"
 	"testing"
+
+	"github.com/Nickhil-Sethi/gogrep/searchrequest"
 )
 
 func TestFindResults(t *testing.T) {
@@ -14,11 +16,11 @@ func TestFindResults(t *testing.T) {
 	sortChannel := make(chan resultRow, 100)
 	var waitGroup sync.WaitGroup
 
-	s := SearchRequest{
+	s := searchrequest.SearchRequest{
 		path:      "./test",
 		pattern:   regexp.MustCompile("captain"),
 		parseJSON: true,
-		filterValues: filterObject{
+		filterValues: FilterObject{
 			requestID:  "",
 			practiceID: -1,
 		},
