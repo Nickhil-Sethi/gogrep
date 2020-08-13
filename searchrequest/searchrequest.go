@@ -106,8 +106,8 @@ func rowMatchesFilters(row jsonRow, filter FilterObject) bool {
 
 func (s *SearchRequest) filterRow(row ResultRow) {
 
-	if s.parseJSON && !rowMatchesFilters(
-		row.jsonContent, s.filterValues) {
+	if s.ParseJSON && !rowMatchesFilters(
+		row.jsonContent, s.FilterValues) {
 		s.waitGroup.Done()
 		return
 	}
@@ -115,13 +115,13 @@ func (s *SearchRequest) filterRow(row ResultRow) {
 	var rowBytes []byte
 	var match []byte
 
-	if s.parseJSON {
+	if s.ParseJSON {
 		rowBytes, _ = json.Marshal(row.jsonContent)
 	} else {
 		rowBytes = []byte(row.stringContent)
 	}
 
-	match = s.pattern.Find(rowBytes)
+	match = s.Pattern.Find(rowBytes)
 	if match == nil {
 		s.waitGroup.Done()
 		return
@@ -133,7 +133,7 @@ func (s *SearchRequest) filterRow(row ResultRow) {
 func (s *SearchRequest) mergeResults() {
 	for match := range s.sortChannel {
 		var priority string
-		if s.parseJSON {
+		if s.ParseJSON {
 			message := (match.jsonContent["message"]).(map[string]interface{})
 			priority = (message["asctime"]).(string)
 		} else {
@@ -215,7 +215,7 @@ func (s *SearchRequest) findMatchInFile(
 		reader = file
 	}
 
-	if s.parseJSON {
+	if s.ParseJSON {
 		s.iterLinesJSON(
 			filePath,
 			&reader)
@@ -260,7 +260,7 @@ func (s *SearchRequest) FindResults() []string {
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
-		s.path,
+		s.Path,
 		s.findMatches())
 
 	if err != nil {
@@ -278,7 +278,7 @@ func (s *SearchRequest) FindResults() []string {
 		item := heap.Pop(s.pq).(*Item)
 		value := item.value
 		var jsonified []byte
-		if s.parseJSON {
+		if s.ParseJSON {
 			var parseErr error
 			jsonified, parseErr = json.Marshal(value.jsonContent)
 			if parseErr != nil {

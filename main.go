@@ -61,8 +61,8 @@ func main() {
 		log.Fatalf("Could not compile regex %s", *patternPtr)
 	}
 
-	parseJSON := *jsonPtr
-	if !parseJSON && ((*practiceIDPtr != -1) || (*requestIDPtr != "")) {
+	ParseJSON := *jsonPtr
+	if !ParseJSON && ((*practiceIDPtr != -1) || (*requestIDPtr != "")) {
 		log.Fatal("To filter on fields, use the --json flag.")
 	}
 
@@ -78,7 +78,7 @@ func main() {
 	s := searchrequest.SearchRequest{
 		pattern:      pattern,
 		path:         *filenamePtr,
-		parseJSON:    *jsonPtr,
+		ParseJSON:    *jsonPtr,
 		filterValues: filterValues}
 
 	results := s.FindResults()

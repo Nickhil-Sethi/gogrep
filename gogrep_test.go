@@ -5,28 +5,21 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"sync"
 	"testing"
 
 	"github.com/Nickhil-Sethi/gogrep/searchrequest"
 )
 
 func TestFindResults(t *testing.T) {
-	queue := make(PriorityQueue, 0)
-	sortChannel := make(chan resultRow, 100)
-	var waitGroup sync.WaitGroup
 
 	s := searchrequest.SearchRequest{
 		path:      "./test",
 		pattern:   regexp.MustCompile("captain"),
-		parseJSON: true,
+		ParseJSON: true,
 		filterValues: FilterObject{
 			requestID:  "",
 			practiceID: -1,
 		},
-		waitGroup:   &waitGroup,
-		pq:          &queue,
-		sortChannel: sortChannel,
 	}
 	results := s.findResults()
 
