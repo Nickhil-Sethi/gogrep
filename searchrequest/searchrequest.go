@@ -55,7 +55,7 @@ func (j jsonRow) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-type resultRow struct {
+type ResultRow struct {
 	stringContent string
 	jsonContent   jsonRow
 }
@@ -65,7 +65,7 @@ type filterObject struct {
 	requestID  string
 }
 
-type searchRequest struct {
+type SearchRequest struct {
 	pattern      *regexp.Regexp
 	path         string
 	parseJSON    bool

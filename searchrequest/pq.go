@@ -1,4 +1,4 @@
-package main
+package searchrequest
 
 import (
 	"container/heap"
@@ -6,7 +6,7 @@ import (
 
 // An Item is something we manage in a priority queue.
 type Item struct {
-	value    resultRow
+	value    ResultRow
 	priority string
 	// The index is needed by update and
 	// is maintained by the heap.Interface methods.
@@ -49,7 +49,7 @@ func (pq *PriorityQueue) Pop() interface{} {
 }
 
 // update modifies the priority and value of an Item in the queue.
-func (pq *PriorityQueue) update(item *Item, value resultRow, priority string) {
+func (pq *PriorityQueue) update(item *Item, value ResultRow, priority string) {
 	item.value = value
 	item.priority = priority
 	heap.Fix(pq, item.index)

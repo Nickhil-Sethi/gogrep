@@ -7,6 +7,8 @@ import (
 	"os"
 	"regexp"
 	"sync"
+
+	"github.com/Nickhil-Sethi/gogrep/searchrequest"
 )
 
 func main() {
@@ -78,7 +80,7 @@ func main() {
 	sortChannel := make(chan resultRow, 100)
 	var waitGroup sync.WaitGroup
 
-	s := searchrequest.searchRequest{
+	s := searchrequest.SearchRequest{
 		pattern:      pattern,
 		path:         *filenamePtr,
 		parseJSON:    *jsonPtr,
