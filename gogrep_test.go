@@ -14,7 +14,7 @@ func TestFindResults(t *testing.T) {
 	sortChannel := make(chan resultRow, 100)
 	var waitGroup sync.WaitGroup
 
-	s := searchRequest{
+	s := SearchRequest{
 		path:      "./test",
 		pattern:   regexp.MustCompile("captain"),
 		parseJSON: true,

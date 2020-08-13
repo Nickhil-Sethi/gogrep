@@ -55,6 +55,8 @@ func (j jsonRow) MarshalJSON() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+// ResultRow : represents one match
+// of resulting search
 type ResultRow struct {
 	stringContent string
 	jsonContent   jsonRow
@@ -65,13 +67,14 @@ type filterObject struct {
 	requestID  string
 }
 
+// SearchRequest : interface of search query
 type SearchRequest struct {
 	pattern      *regexp.Regexp
 	path         string
 	parseJSON    bool
 	filterValues filterObject
 	waitGroup    *sync.WaitGroup
-	sortChannel  chan resultRow
+	sortChannel  chan ResultRow
 	pq           *PriorityQueue
 }
 
@@ -100,7 +103,7 @@ func rowMatchesFilters(row jsonRow, filter filterObject) bool {
 	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
-func (s *searchRequest) filterRow(row resultRow) {
+func (s *SearchRequest) filterRow(row resultRow) {
 
 	if s.parseJSON && !rowMatchesFilters(
 		row.jsonContent, s.filterValues) {
@@ -126,7 +129,7 @@ func (s *searchRequest) filterRow(row resultRow) {
 	s.sortChannel <- row
 }
 
-func (s *searchRequest) mergeResults() {
+func (s *SearchRequest) mergeResults() {
 	for match := range s.sortChannel {
 		var priority string
 		if s.parseJSON {
@@ -144,7 +147,7 @@ func (s *searchRequest) mergeResults() {
 	}
 }
 
-func (s *searchRequest) iterLinesJSON(
+func (s *SearchRequest) iterLinesJSON(
 	filePath string,
 	reader *io.Reader) {
 
@@ -157,7 +160,7 @@ func (s *searchRequest) iterLinesJSON(
 		}
 		s.waitGroup.Add(1)
 		// fmt.Print(r)
-		row := resultRow{
+		row := ResultRow{
 			jsonContent:   r,
 			stringContent: "",
 		}
@@ -166,7 +169,7 @@ func (s *searchRequest) iterLinesJSON(
 	}
 }
 
-func (s *searchRequest) iterLinesPlain(
+func (s *SearchRequest) iterLinesPlain(
 	filePath string,
 	reader *io.Reader) {
 
@@ -183,7 +186,7 @@ func (s *searchRequest) iterLinesPlain(
 	}
 }
 
-func (s *searchRequest) findMatchInFile(
+func (s *SearchRequest) findMatchInFile(
 	filePath string) {
 
 	defer s.waitGroup.Done()
@@ -222,7 +225,7 @@ func (s *searchRequest) findMatchInFile(
 	}
 }
 
-func (s *searchRequest) findMatches() filepath.WalkFunc {
+func (s *SearchRequest) findMatches() filepath.WalkFunc {
 	return func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Fatalf("Error in walking file %s\n%s", filePath, err)
@@ -239,7 +242,7 @@ func (s *searchRequest) findMatches() filepath.WalkFunc {
 	}
 }
 
-func (s *searchRequest) findResults() []string {
+func (s *SearchRequest) findResults() []string {
 
 	// this goroutine continually sorts
 	// rows by timestamp in the background
