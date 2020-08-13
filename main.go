@@ -21,12 +21,12 @@ func main() {
 		"./",
 		"File or directory to search in.")
 
-	practiceIDPtr := flag.Int(
+	PracticeIDPtr := flag.Int(
 		"i",
 		-1,
 		"Practice ID to filter on.")
 
-	requestIDPtr := flag.String(
+	RequestIDPtr := flag.String(
 		"r",
 		"",
 		"Request ID to filter on.")
@@ -62,24 +62,24 @@ func main() {
 	}
 
 	ParseJSON := *jsonPtr
-	if !ParseJSON && ((*practiceIDPtr != -1) || (*requestIDPtr != "")) {
+	if !ParseJSON && ((*PracticeIDPtr != -1) || (*RequestIDPtr != "")) {
 		log.Fatal("To filter on fields, use the --json flag.")
 	}
 
-	// practiceID and requiestID filters (and maybe more!)
-	// stored here. If practiceID or requestID
+	// PracticeID and requiestID filters (and maybe more!)
+	// stored here. If PracticeID or RequestID
 	// are present, rows which do not match on
 	// either field will be filtered out.
-	filterValues := FilterObject{}
+	filterValues := searchrequest.FilterObject{}
 
-	filterValues.practiceID = *practiceIDPtr
-	filterValues.requestID = *requestIDPtr
+	filterValues.PracticeID = *PracticeIDPtr
+	filterValues.RequestID = *RequestIDPtr
 
 	s := searchrequest.SearchRequest{
-		pattern:      pattern,
-		path:         *filenamePtr,
+		Pattern:      pattern,
+		Path:         *filenamePtr,
 		ParseJSON:    *jsonPtr,
-		filterValues: filterValues}
+		FilterValues: filterValues}
 
 	results := s.FindResults()
 	// encoder := json.NewEncoder(os.Stdout)

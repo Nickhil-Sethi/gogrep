@@ -13,15 +13,15 @@ import (
 func TestFindResults(t *testing.T) {
 
 	s := searchrequest.SearchRequest{
-		path:      "./test",
-		pattern:   regexp.MustCompile("captain"),
+		Path:      "./test",
+		Pattern:   regexp.MustCompile("captain"),
 		ParseJSON: true,
-		filterValues: FilterObject{
-			requestID:  "",
-			practiceID: -1,
+		FilterValues: searchrequest.FilterObject{
+			RequestID:  "",
+			PracticeID: -1,
 		},
 	}
-	results := s.findResults()
+	results := s.FindResults()
 
 	m := map[string]interface{}{"message": map[string]interface{}{
 		"asctime":     "2020-05-03 13:10:12,112",

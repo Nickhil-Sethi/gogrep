@@ -64,8 +64,8 @@ type ResultRow struct {
 }
 
 type FilterObject struct {
-	practiceID int
-	requestID  string
+	PracticeID int
+	RequestID  string
 }
 
 // SearchRequest : interface of search query
@@ -79,29 +79,29 @@ type SearchRequest struct {
 	pq           *PriorityQueue
 }
 
-func practiceIDMatches(row jsonRow, filter FilterObject) bool {
+func PracticeIDMatches(row jsonRow, filter FilterObject) bool {
 	message := (row["message"]).(map[string]interface{})
-	practiceID, _ := message["practice_id"]
-	rowPracticeID := int(practiceID.(float64))
-	filterPresent := (filter.practiceID != -1)
-	if filterPresent && filter.practiceID != rowPracticeID {
+	PracticeID, _ := message["practice_id"]
+	rowPracticeID := int(PracticeID.(float64))
+	filterPresent := (filter.PracticeID != -1)
+	if filterPresent && filter.PracticeID != rowPracticeID {
 		return false
 	}
 	return true
 }
 
-func requestIDMatches(row jsonRow, filter FilterObject) bool {
+func RequestIDMatches(row jsonRow, filter FilterObject) bool {
 	message := (row["message"]).(map[string]interface{})
-	requestID, _ := message["request_id"]
-	filterPresent := (filter.requestID != "")
-	if filterPresent && filter.requestID != requestID {
+	RequestID, _ := message["request_id"]
+	filterPresent := (filter.RequestID != "")
+	if filterPresent && filter.RequestID != RequestID {
 		return false
 	}
 	return true
 }
 
 func rowMatchesFilters(row jsonRow, filter FilterObject) bool {
-	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
+	return PracticeIDMatches(row, filter) && RequestIDMatches(row, filter)
 }
 
 func (s *SearchRequest) filterRow(row ResultRow) {
