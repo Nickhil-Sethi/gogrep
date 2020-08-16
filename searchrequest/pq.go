@@ -4,8 +4,8 @@ import (
 	"container/heap"
 )
 
-// An Item is something we manage in a priority queue.
-type Item struct {
+// An item is something we manage in a priority queue.
+type item struct {
 	value    ResultRow
 	priority string
 	// The index is needed by update and
@@ -13,32 +13,32 @@ type Item struct {
 	index int
 }
 
-// PriorityQueue list of pointers to item structs
-type PriorityQueue []*Item
+// priorityQueue list of pointers to item structs
+type priorityQueue []*item
 
-func (pq PriorityQueue) Len() int { return len(pq) }
+func (pq priorityQueue) Len() int { return len(pq) }
 
-func (pq PriorityQueue) Less(i, j int) bool {
+func (pq priorityQueue) Less(i, j int) bool {
 	isLess := pq[i].priority < pq[j].priority
 	return isLess
 }
 
-func (pq PriorityQueue) Swap(i, j int) {
+func (pq priorityQueue) Swap(i, j int) {
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
 // Push : pushes an item onto the priority queu
-func (pq *PriorityQueue) Push(x interface{}) {
+func (pq *priorityQueue) Push(x interface{}) {
 	n := len(*pq)
-	item := x.(*Item)
+	item := x.(*item)
 	item.index = n
 	*pq = append(*pq, item)
 }
 
 // Pop : removes an item from the priority queue
-func (pq *PriorityQueue) Pop() interface{} {
+func (pq *priorityQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
@@ -48,8 +48,8 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return item
 }
 
-// update modifies the priority and value of an Item in the queue.
-func (pq *PriorityQueue) update(item *Item, value ResultRow, priority string) {
+// update modifies the priority and value of an item in the queue.
+func (pq *priorityQueue) update(item *item, value ResultRow, priority string) {
 	item.value = value
 	item.priority = priority
 	heap.Fix(pq, item.index)

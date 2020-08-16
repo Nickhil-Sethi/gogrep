@@ -16,6 +16,8 @@ import (
 	"sync"
 )
 
+const ChannelSize = 100
+
 // an unfortunate hack to tolerate
 // unstructured JSON
 type jsonRow map[string]interface{}
@@ -76,7 +78,7 @@ type SearchRequest struct {
 	FilterValues FilterObject
 	waitGroup    *sync.WaitGroup
 	sortChannel  chan ResultRow
-	pq           *PriorityQueue
+	pq           *priorityQueue
 }
 
 func PracticeIDMatches(row jsonRow, filter FilterObject) bool {
@@ -139,7 +141,7 @@ func (s *SearchRequest) mergeResults() {
 		} else {
 			priority = match.stringContent
 		}
-		item := &Item{
+		item := &item{
 			value:    match,
 			priority: priority,
 		}
@@ -246,8 +248,8 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 // FindResults returns results of executed query
 func (s *SearchRequest) FindResults() []string {
 
-	queue := make(PriorityQueue, 0)
-	sortChannel := make(chan ResultRow, 100)
+	queue := make(priorityQueue, 0)
+	sortChannel := make(chan ResultRow, ChannelSize)
 	var waitGroup sync.WaitGroup
 
 	s.pq = &queue
@@ -275,7 +277,7 @@ func (s *SearchRequest) FindResults() []string {
 	results := []string{}
 
 	for s.pq.Len() > 0 {
-		item := heap.Pop(s.pq).(*Item)
+		item := heap.Pop(s.pq).(*item)
 		value := item.value
 		var jsonified []byte
 		if s.ParseJSON {
