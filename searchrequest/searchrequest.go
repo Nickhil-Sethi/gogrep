@@ -16,6 +16,8 @@ import (
 	"sync"
 )
 
+const ChannelSize = 100
+
 // an unfortunate hack to tolerate
 // unstructured JSON
 type jsonRow map[string]interface{}
@@ -247,7 +249,7 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 func (s *SearchRequest) FindResults() []string {
 
 	queue := make(priorityQueue, 0)
-	sortChannel := make(chan ResultRow, 100)
+	sortChannel := make(chan ResultRow, ChannelSize)
 	var waitGroup sync.WaitGroup
 
 	s.pq = &queue
