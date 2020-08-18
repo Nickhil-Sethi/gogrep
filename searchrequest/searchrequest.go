@@ -177,12 +177,10 @@ func (s *SearchRequest) iterLinesJSON(
 			log.Fatalf("Could not parse %s", filePath)
 		}
 		s.waitGroup.Add(1)
-		// fmt.Print(r)
 		row := ResultRow{
 			jsonContent:   r,
 			stringContent: "",
 		}
-		// channel send
 		s.rowChannel <- row
 	}
 }
@@ -200,7 +198,6 @@ func (s *SearchRequest) iterLinesPlain(
 			IsJSON:        s.ParseJSON,
 		}
 		s.waitGroup.Add(1)
-		// channel send
 		s.rowChannel <- row
 	}
 }
@@ -254,7 +251,6 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 			return nil
 		case mode.IsRegular():
 			s.waitGroup.Add(1)
-			// channel send
 			s.fileChannel <- filePath
 		}
 		return nil
