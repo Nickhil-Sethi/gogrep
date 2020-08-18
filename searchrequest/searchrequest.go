@@ -79,6 +79,8 @@ type SearchRequest struct {
 	FilterValues FilterObject
 	waitGroup    *sync.WaitGroup
 	sortChannel  chan ResultRow
+	rowChannel   chan ResultRow
+	fileChannel  chan string
 	pq           *priorityQueue
 }
 
@@ -133,6 +135,18 @@ func (s *SearchRequest) filterRow(row ResultRow) {
 	s.sortChannel <- row
 }
 
+func (s *SearchRequest) fileWorker() {
+	for filePath := range s.fileChannel {
+		s.findMatchInFile(filePath)
+	}
+}
+
+func (s *SearchRequest) rowWorker() {
+	for row := range s.rowChannel {
+		s.filterRow(row)
+	}
+}
+
 func (s *SearchRequest) mergeResults() {
 	for match := range s.sortChannel {
 		var priority string
@@ -168,8 +182,8 @@ func (s *SearchRequest) iterLinesJSON(
 			jsonContent:   r,
 			stringContent: "",
 		}
-		go s.filterRow(
-			row)
+		// channel send
+		s.rowChannel <- row
 	}
 }
 
@@ -186,8 +200,8 @@ func (s *SearchRequest) iterLinesPlain(
 			IsJSON:        s.ParseJSON,
 		}
 		s.waitGroup.Add(1)
-		go s.filterRow(
-			row)
+		// channel send
+		s.rowChannel <- row
 	}
 }
 
@@ -240,10 +254,17 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 			return nil
 		case mode.IsRegular():
 			s.waitGroup.Add(1)
-			go s.findMatchInFile(
-				filePath)
+			// channel send
+			s.fileChannel <- filePath
 		}
 		return nil
+	}
+}
+
+func (s *SearchRequest) setupWorkers() {
+	for i := 0; i < 100; i++ {
+		go s.fileWorker()
+		go s.rowWorker()
 	}
 }
 
@@ -252,16 +273,20 @@ func (s *SearchRequest) FindResults() []ResultRow {
 
 	queue := make(priorityQueue, 0)
 	sortChannel := make(chan ResultRow, ChannelSize)
+	rowChannel := make(chan ResultRow, ChannelSize)
+	fileChannel := make(chan string, ChannelSize)
 	var waitGroup sync.WaitGroup
 
 	s.pq = &queue
 	s.sortChannel = sortChannel
+	s.rowChannel = rowChannel
+	s.fileChannel = fileChannel
 	s.waitGroup = &waitGroup
 
 	// this goroutine continually sorts
 	// rows by timestamp in the background
 	go s.mergeResults()
-
+	s.setupWorkers()
 	// walk the directory / file recursively
 	err := filepath.Walk(
 		s.Path,
