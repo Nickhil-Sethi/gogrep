@@ -63,6 +63,7 @@ type ResultRow struct {
 	stringContent string
 	jsonContent   jsonRow
 	FilePath      string
+	IsJSON        bool
 }
 
 type FilterObject struct {
@@ -182,6 +183,7 @@ func (s *SearchRequest) iterLinesPlain(
 		row := ResultRow{
 			jsonContent:   make(map[string]interface{}),
 			stringContent: line,
+			IsJSON:        s.ParseJSON,
 		}
 		s.waitGroup.Add(1)
 		go s.filterRow(
@@ -246,7 +248,7 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 }
 
 // FindResults returns results of executed query
-func (s *SearchRequest) FindResults() []string {
+func (s *SearchRequest) FindResults() []ResultRow {
 
 	queue := make(priorityQueue, 0)
 	sortChannel := make(chan ResultRow, ChannelSize)
@@ -274,22 +276,12 @@ func (s *SearchRequest) FindResults() []string {
 	s.waitGroup.Wait()
 	close(s.sortChannel)
 
-	results := []string{}
+	results := []ResultRow{}
 
 	for s.pq.Len() > 0 {
 		item := heap.Pop(s.pq).(*item)
 		value := item.value
-		var jsonified []byte
-		if s.ParseJSON {
-			var parseErr error
-			jsonified, parseErr = json.Marshal(value.jsonContent)
-			if parseErr != nil {
-				log.Fatalf("Something went wrong. Error parsing JSON from heap.")
-			}
-		} else {
-			jsonified = []byte(value.stringContent)
-		}
-		results = append(results, string(jsonified))
+		results = append(results, value)
 	}
 	return results
 }
