@@ -135,18 +135,6 @@ func (s *SearchRequest) filterRow(row ResultRow) {
 	s.sortChannel <- row
 }
 
-func (s *SearchRequest) fileWorker() {
-	for filePath := range s.fileChannel {
-		s.findMatchInFile(filePath)
-	}
-}
-
-func (s *SearchRequest) rowWorker() {
-	for row := range s.rowChannel {
-		s.filterRow(row)
-	}
-}
-
 func (s *SearchRequest) mergeResults() {
 	for match := range s.sortChannel {
 		var priority string
@@ -256,7 +244,17 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 		return nil
 	}
 }
+func (s *SearchRequest) fileWorker() {
+	for filePath := range s.fileChannel {
+		s.findMatchInFile(filePath)
+	}
+}
 
+func (s *SearchRequest) rowWorker() {
+	for row := range s.rowChannel {
+		s.filterRow(row)
+	}
+}
 func (s *SearchRequest) setupWorkers() {
 	for i := 0; i < 100; i++ {
 		go s.fileWorker()
@@ -282,7 +280,13 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	// this goroutine continually sorts
 	// rows by timestamp in the background
 	go s.mergeResults()
+
+	// rather tham a goroutine
+	// per line, we use channels
+	// to parallelize work over
+	// a fixed pool of goroutines
 	s.setupWorkers()
+
 	// walk the directory / file recursively
 	err := filepath.Walk(
 		s.Path,
@@ -296,9 +300,10 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	// files have been processed.
 	s.waitGroup.Wait()
 	close(s.sortChannel)
+	close(s.fileChannel)
+	close(s.rowChannel)
 
 	results := []ResultRow{}
-
 	for s.pq.Len() > 0 {
 		item := heap.Pop(s.pq).(*item)
 		value := item.value
