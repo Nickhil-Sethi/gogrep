@@ -30,11 +30,31 @@ func TestFindResults(t *testing.T) {
 		"user_id":     919888959,
 		"message":     "captain america",
 	}}
-	strM, _ := json.Marshal(m)
-	var exp [1]string
-	exp[0] = string(strM)
-	if !reflect.DeepEqual(results, exp) {
-		fmt.Print("Unexpected results ", results, exp)
+	expectedBytes, _ := json.Marshal(m)
+	expectedString := string(expectedBytes)
+
+	receivedString, _ := results[0].GetContent()
+
+	if len(results) == 0 {
+		fmt.Print("Empty results list returned. Want one element.")
+		t.Fail()
+	}
+
+	if !results[0].IsJSON {
+		fmt.Printf(
+			"Wrong value of IsJSON received. Have %t / Want %t",
+			results[0].IsJSON,
+			true)
+		t.Fail()
+	}
+
+	if !reflect.DeepEqual(receivedString, expectedString) {
+		fmt.Printf("Unexpected content. Have %s / Want %s ", receivedString, expectedString)
+		t.Fail()
+	}
+
+	if !(results[0].FilePath == "test/test_data_2.json") {
+		fmt.Printf("Unexpected FilePath. Have %s / Want %s", results[0].FilePath, "test/test_data_2.json")
 		t.Fail()
 	}
 }

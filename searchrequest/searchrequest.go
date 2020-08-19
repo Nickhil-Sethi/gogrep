@@ -1,10 +1,7 @@
 package searchrequest
 
 import (
-	"bytes"
 	"container/heap"
-	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,54 +12,8 @@ import (
 
 const ChannelSize = 100
 
-// an unfortunate hack to tolerate
-// unstructured JSON
-type jsonRow map[string]interface{}
-
-func (j jsonRow) MarshalJSON() ([]byte, error) {
-	buffer := bytes.NewBufferString("{")
-	length := len(j)
-	count := 0
-	for key, value := range j {
-		switch value.(type) {
-		case int:
-			buffer.WriteString(fmt.Sprintf("\"%s\":%d", key, value))
-			count++
-			if count < length {
-				buffer.WriteString(",")
-			}
-		case string:
-			buffer.WriteString(fmt.Sprintf("\"%s\":%s", key, value))
-			count++
-			if count < length {
-				buffer.WriteString(",")
-			}
-		default:
-			jsonified, err := json.Marshal(value)
-			if err != nil {
-				return nil, err
-			}
-			add := fmt.Sprintf("\"%s\":%s", key, jsonified)
-			buffer.WriteString(add)
-			count = count + len(add)
-			if count < length {
-				buffer.WriteString(",")
-			}
-		}
-	}
-	buffer.WriteString("}")
-	return buffer.Bytes(), nil
-}
-
-// ResultRow : represents one match
-// of resulting search
-type ResultRow struct {
-	stringContent string
-	jsonContent   jsonRow
-	FilePath      string
-	IsJSON        bool
-}
-
+// FilterObject is
+// Tracks what we filter on
 type FilterObject struct {
 	PracticeID int
 	RequestID  string
