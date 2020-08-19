@@ -39,6 +39,8 @@ func (w *fileWorker) iterLinesJSON(
 		row := ResultRow{
 			jsonContent:   r,
 			stringContent: "",
+			IsJSON:        w.ParseJSON,
+			FilePath:      filePath,
 		}
 		w.rowChannel <- row
 	}
@@ -55,6 +57,7 @@ func (w *fileWorker) iterLinesPlain(
 			jsonContent:   make(map[string]interface{}),
 			stringContent: line,
 			IsJSON:        w.ParseJSON,
+			FilePath:      filePath,
 		}
 		w.waitGroup.Add(1)
 		w.rowChannel <- row
