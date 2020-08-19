@@ -165,7 +165,7 @@ type sortWorker struct {
 	*SearchRequest
 }
 
-func (w *sortWorker) mergeResults() {
+func (w *sortWorker) run() {
 	for match := range w.sortChannel {
 		var priority string
 		if w.ParseJSON {

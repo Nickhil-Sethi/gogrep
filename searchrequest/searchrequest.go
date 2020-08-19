@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sync"
 )
 
@@ -96,20 +97,6 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 	}
 }
 
-func (s *SearchRequest) setupWorkers() {
-	// TODO(nickhil) : remove magic number
-	sworker := sortWorker{s}
-	go sworker.mergeResults()
-
-	for i := 0; i < 100; i++ {
-		fworker := fileWorker{s}
-		lworker := rowWorker{s}
-
-		go fworker.run()
-		go lworker.run()
-	}
-}
-
 func (s *SearchRequest) initialize() {
 	queue := make(priorityQueue, 0)
 	sortChannel := make(chan ResultRow, ChannelSize)
@@ -133,7 +120,16 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	// per line, we use channels
 	// to parallelize work over
 	// a fixed pool of goroutines
-	s.setupWorkers()
+	sortWorker := sortWorker{s}
+	go sortWorker.run()
+
+	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
+		fworker := fileWorker{s}
+		lworker := rowWorker{s}
+
+		go fworker.run()
+		go lworker.run()
+	}
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
