@@ -54,9 +54,13 @@ type ResultRow struct {
 	IsJSON        bool
 }
 
-func (r *ResultRow) GetContent() ([]byte, error) {
+func (r *ResultRow) GetContent() (string, error) {
 	if r.IsJSON {
-		return json.Marshal(r.jsonContent)
+		contentBytes, err := json.Marshal(r.jsonContent)
+		if err != nil {
+			return "", err
+		}
+		return string(contentBytes), nil
 	}
-	return []byte(r.stringContent), nil
+	return r.stringContent, nil
 }

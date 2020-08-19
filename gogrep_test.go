@@ -38,4 +38,9 @@ func TestFindResults(t *testing.T) {
 		fmt.Print("Unexpected results ", receivedString, expectedString)
 		t.Fail()
 	}
+
+	if !(results[0].FilePath == "test/test_data_2.json") {
+		fmt.Printf("Unexpected FilePath %s", results[0].FilePath)
+		t.Fail()
+	}
 }
