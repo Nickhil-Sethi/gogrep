@@ -33,8 +33,7 @@ func TestFindResults(t *testing.T) {
 	expectedBytes, _ := json.Marshal(m)
 	expectedString := string(expectedBytes)
 
-	receivedBytes, _ := results[0].GetContent()
-	receivedString := string(receivedBytes)
+	receivedString, _ := results[0].GetContent()
 	if !reflect.DeepEqual(receivedString, expectedString) {
 		fmt.Print("Unexpected results ", receivedString, expectedString)
 		t.Fail()
