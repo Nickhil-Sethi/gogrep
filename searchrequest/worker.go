@@ -3,16 +3,13 @@ package searchrequest
 import (
 	"bufio"
 	"compress/gzip"
+	"container/heap"
 	"encoding/json"
 	"io"
 	"log"
 	"os"
 	"strings"
 )
-
-type worker interface {
-	run()
-}
 
 type fileWorker struct {
 	*SearchRequest
@@ -162,4 +159,26 @@ func (w *rowWorker) filterRow(row ResultRow) {
 	}
 
 	w.sortChannel <- row
+}
+
+type sortWorker struct {
+	*SearchRequest
+}
+
+func (w *sortWorker) mergeResults() {
+	for match := range w.sortChannel {
+		var priority string
+		if w.ParseJSON {
+			message := (match.jsonContent["message"]).(map[string]interface{})
+			priority = (message["asctime"]).(string)
+		} else {
+			priority = match.stringContent
+		}
+		item := &item{
+			value:    match,
+			priority: priority,
+		}
+		heap.Push(w.pq, item)
+		w.waitGroup.Done()
+	}
 }

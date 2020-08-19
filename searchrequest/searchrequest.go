@@ -80,24 +80,6 @@ type SearchRequest struct {
 	pq           *priorityQueue
 }
 
-func (s *SearchRequest) mergeResults() {
-	for match := range s.sortChannel {
-		var priority string
-		if s.ParseJSON {
-			message := (match.jsonContent["message"]).(map[string]interface{})
-			priority = (message["asctime"]).(string)
-		} else {
-			priority = match.stringContent
-		}
-		item := &item{
-			value:    match,
-			priority: priority,
-		}
-		heap.Push(s.pq, item)
-		s.waitGroup.Done()
-	}
-}
-
 func (s *SearchRequest) findMatches() filepath.WalkFunc {
 	return func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -116,6 +98,9 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 
 func (s *SearchRequest) setupWorkers() {
 	// TODO(nickhil) : remove magic number
+	sworker := sortWorker{s}
+	go sworker.mergeResults()
+
 	for i := 0; i < 100; i++ {
 		fworker := fileWorker{s}
 		lworker := rowWorker{s}
@@ -139,10 +124,6 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	s.rowChannel = rowChannel
 	s.fileChannel = fileChannel
 	s.waitGroup = &waitGroup
-
-	// this goroutine continually sorts
-	// rows by timestamp in the background
-	go s.mergeResults()
 
 	// rather tham a goroutine
 	// per line, we use channels
