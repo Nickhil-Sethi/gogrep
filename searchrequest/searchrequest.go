@@ -110,9 +110,7 @@ func (s *SearchRequest) setupWorkers() {
 	}
 }
 
-// FindResults returns results of executed query
-func (s *SearchRequest) FindResults() []ResultRow {
-
+func (s *SearchRequest) initialize() {
 	queue := make(priorityQueue, 0)
 	sortChannel := make(chan ResultRow, ChannelSize)
 	rowChannel := make(chan ResultRow, ChannelSize)
@@ -124,6 +122,12 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	s.rowChannel = rowChannel
 	s.fileChannel = fileChannel
 	s.waitGroup = &waitGroup
+}
+
+// FindResults returns results of executed query
+func (s *SearchRequest) FindResults() []ResultRow {
+
+	s.initialize()
 
 	// rather tham a goroutine
 	// per line, we use channels
