@@ -12,12 +12,12 @@ import (
 
 func main() {
 	patternPtr := flag.String(
-		"p",
+		"e",
 		"",
 		"Pattern to search for. (required)")
 
 	filenamePtr := flag.String(
-		"d",
+		"f",
 		"./",
 		"File or directory to search in.")
 
