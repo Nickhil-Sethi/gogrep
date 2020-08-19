@@ -30,11 +30,13 @@ func TestFindResults(t *testing.T) {
 		"user_id":     919888959,
 		"message":     "captain america",
 	}}
-	strM, _ := json.Marshal(m)
-	var exp [1]string
-	exp[0] = string(strM)
-	if !reflect.DeepEqual(results, exp) {
-		fmt.Print("Unexpected results ", results, exp)
+	expectedBytes, _ := json.Marshal(m)
+	expectedString := string(expectedBytes)
+
+	receivedBytes, _ := results[0].GetContent()
+	receivedString := string(receivedBytes)
+	if !reflect.DeepEqual(receivedString, expectedString) {
+		fmt.Print("Unexpected results ", receivedString, expectedString)
 		t.Fail()
 	}
 }
