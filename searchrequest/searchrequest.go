@@ -97,6 +97,20 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 	}
 }
 
+func (s *SearchRequest) setupFileWorkers() {
+	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
+		fworker := fileWorker{s}
+		go fworker.run()
+	}
+}
+
+func (s *SearchRequest) setupRowWorkers() {
+	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
+		lworker := rowWorker{s}
+		go lworker.run()
+	}
+}
+
 func (s *SearchRequest) initialize() {
 	queue := make(priorityQueue, 0)
 	sortChannel := make(chan ResultRow, ChannelSize)
@@ -113,23 +127,21 @@ func (s *SearchRequest) initialize() {
 
 // FindResults returns results of executed query
 func (s *SearchRequest) FindResults() []ResultRow {
-
 	s.initialize()
 
-	// rather tham a goroutine
-	// per line, we use channels
-	// to parallelize work over
-	// a fixed pool of goroutines
+	// this worker sorts the results in the
+	// background
 	sortWorker := sortWorker{s}
 	go sortWorker.run()
 
-	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
-		fworker := fileWorker{s}
-		lworker := rowWorker{s}
-
-		go fworker.run()
-		go lworker.run()
-	}
+	// two worker pools,
+	// one for files and
+	// one for lines.
+	// this bounds the memory usage
+	// of the program when used
+	// over large file trees
+	s.setupFileWorkers()
+	s.setupRowWorkers()
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
