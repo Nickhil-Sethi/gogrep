@@ -1,18 +1,14 @@
 package searchrequest
 
 import (
-	"bufio"
 	"bytes"
-	"compress/gzip"
 	"container/heap"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"sync"
 )
 
@@ -84,57 +80,6 @@ type SearchRequest struct {
 	pq           *priorityQueue
 }
 
-func PracticeIDMatches(row jsonRow, filter FilterObject) bool {
-	message := (row["message"]).(map[string]interface{})
-	PracticeID, _ := message["practice_id"]
-	rowPracticeID := int(PracticeID.(float64))
-	filterPresent := (filter.PracticeID != -1)
-	if filterPresent && filter.PracticeID != rowPracticeID {
-		return false
-	}
-	return true
-}
-
-func RequestIDMatches(row jsonRow, filter FilterObject) bool {
-	message := (row["message"]).(map[string]interface{})
-	RequestID, _ := message["request_id"]
-	filterPresent := (filter.RequestID != "")
-	if filterPresent && filter.RequestID != RequestID {
-		return false
-	}
-	return true
-}
-
-func rowMatchesFilters(row jsonRow, filter FilterObject) bool {
-	return PracticeIDMatches(row, filter) && RequestIDMatches(row, filter)
-}
-
-func (s *SearchRequest) filterRow(row ResultRow) {
-
-	if s.ParseJSON && !rowMatchesFilters(
-		row.jsonContent, s.FilterValues) {
-		s.waitGroup.Done()
-		return
-	}
-
-	var rowBytes []byte
-	var match []byte
-
-	if s.ParseJSON {
-		rowBytes, _ = json.Marshal(row.jsonContent)
-	} else {
-		rowBytes = []byte(row.stringContent)
-	}
-
-	match = s.Pattern.Find(rowBytes)
-	if match == nil {
-		s.waitGroup.Done()
-		return
-	}
-
-	s.sortChannel <- row
-}
-
 func (s *SearchRequest) mergeResults() {
 	for match := range s.sortChannel {
 		var priority string
@@ -153,82 +98,6 @@ func (s *SearchRequest) mergeResults() {
 	}
 }
 
-func (s *SearchRequest) iterLinesJSON(
-	filePath string,
-	reader *io.Reader) {
-
-	decoder := json.NewDecoder(*reader)
-	for decoder.More() {
-		var r jsonRow
-		err := decoder.Decode(&r)
-		if err != nil {
-			log.Fatalf("Could not parse %s", filePath)
-		}
-		s.waitGroup.Add(1)
-		row := ResultRow{
-			jsonContent:   r,
-			stringContent: "",
-		}
-		s.rowChannel <- row
-	}
-}
-
-func (s *SearchRequest) iterLinesPlain(
-	filePath string,
-	reader *io.Reader) {
-
-	scanner := bufio.NewScanner(*reader)
-	for scanner.Scan() {
-		line := scanner.Text()
-		row := ResultRow{
-			jsonContent:   make(map[string]interface{}),
-			stringContent: line,
-			IsJSON:        s.ParseJSON,
-		}
-		s.waitGroup.Add(1)
-		s.rowChannel <- row
-	}
-}
-
-func (s *SearchRequest) findMatchInFile(
-	filePath string) {
-
-	defer s.waitGroup.Done()
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Fatalf("Could not open file %s", filePath)
-	}
-	defer file.Close()
-
-	// detect if the file is a
-	// zlib compressed file and
-	// automatically decompress
-	var reader io.Reader
-	// TODO(nickhil) : change this to
-	// detect gzipping based on file contents
-	// rather than .gz extension
-	if strings.Contains(filePath, ".gz") {
-		reader, err = gzip.NewReader(file)
-		if err != nil {
-			log.Fatalf(
-				"Error unzipping file %s\n%s", filePath, err)
-		}
-	} else {
-		reader = file
-	}
-
-	if s.ParseJSON {
-		s.iterLinesJSON(
-			filePath,
-			&reader)
-	} else {
-		s.iterLinesPlain(
-			filePath,
-			&reader)
-	}
-}
-
 func (s *SearchRequest) findMatches() filepath.WalkFunc {
 	return func(filePath string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -244,21 +113,15 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 		return nil
 	}
 }
-func (s *SearchRequest) fileWorker() {
-	for filePath := range s.fileChannel {
-		s.findMatchInFile(filePath)
-	}
-}
 
-func (s *SearchRequest) rowWorker() {
-	for row := range s.rowChannel {
-		s.filterRow(row)
-	}
-}
 func (s *SearchRequest) setupWorkers() {
+	// TODO(nickhil) : remove magic number
 	for i := 0; i < 100; i++ {
-		go s.fileWorker()
-		go s.rowWorker()
+		fworker := fileWorker{s}
+		lworker := rowWorker{s}
+
+		go fworker.run()
+		go lworker.run()
 	}
 }
 
