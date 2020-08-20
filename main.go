@@ -85,6 +85,7 @@ func main() {
 	// encoder := json.NewEncoder(os.Stdout)
 	for _, row := range results {
 		// encoder.Encode(row)
-		fmt.Println(row)
+		s, _ := row.GetContent()
+		fmt.Printf("%s: %s\n", row.FilePath, s)
 	}
 }
