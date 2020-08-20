@@ -42,6 +42,11 @@ func main() {
 		false,
 		"Parse file as newline separated json.")
 
+	cpuprofile := flag.String(
+		"cpuprofile",
+		"",
+		"write cpu profile to file")
+
 	flag.Parse()
 
 	if *helpPtr {
@@ -67,7 +72,6 @@ func main() {
 		log.Fatal("To filter on fields, use the --json flag.")
 	}
 
-	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
