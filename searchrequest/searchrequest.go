@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-const ChannelSize = 100
+const ChannelSize = 10000
 
 // FilterObject is
 // Tracks what we filter on
