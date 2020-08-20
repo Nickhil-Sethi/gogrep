@@ -172,7 +172,7 @@ func (w *sortWorker) run() {
 			message := (match.jsonContent["message"]).(map[string]interface{})
 			priority = (message["asctime"]).(string)
 		} else {
-			priority = match.stringContent
+			priority = match.FilePath
 		}
 		item := &item{
 			value:    match,
