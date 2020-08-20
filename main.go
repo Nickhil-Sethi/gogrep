@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"runtime/pprof"
 
 	"github.com/Nickhil-Sethi/gogrep/searchrequest"
 )
@@ -64,6 +65,16 @@ func main() {
 	ParseJSON := *jsonPtr
 	if !ParseJSON && ((*PracticeIDPtr != -1) || (*RequestIDPtr != "")) {
 		log.Fatal("To filter on fields, use the --json flag.")
+	}
+
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
 	}
 
 	// PracticeID and requiestID filters (and maybe more!)
