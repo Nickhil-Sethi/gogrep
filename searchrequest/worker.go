@@ -32,7 +32,6 @@ func (w *fileWorker) iterLinesJSON(
 		if err != nil {
 			log.Fatalf("Could not parse %s", filePath)
 		}
-		w.waitGroup.Add(1)
 		row := ResultRow{
 			jsonContent:   r,
 			stringContent: "",
@@ -56,7 +55,6 @@ func (w *fileWorker) iterLinesPlain(
 			IsJSON:        w.ParseJSON,
 			FilePath:      filePath,
 		}
-		w.waitGroup.Add(1)
 		w.filterRow(row)
 	}
 }
@@ -129,7 +127,6 @@ func (w *fileWorker) filterRow(row ResultRow) {
 
 	if w.ParseJSON && !rowMatchesFilters(
 		row.jsonContent, w.FilterValues) {
-		w.waitGroup.Done()
 		return
 	}
 
@@ -144,7 +141,6 @@ func (w *fileWorker) filterRow(row ResultRow) {
 
 	match = w.Pattern.Find(rowBytes)
 	if match == nil {
-		w.waitGroup.Done()
 		return
 	}
 
@@ -169,6 +165,5 @@ func (w *sortWorker) run() {
 			priority: priority,
 		}
 		heap.Push(w.pq, item)
-		w.waitGroup.Done()
 	}
 }
