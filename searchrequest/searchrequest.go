@@ -6,11 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"sync"
 )
 
 const ChannelSize = 10000
+const numGorutines = 1000
 
 // FilterObject is
 // Tracks what we filter on
@@ -48,7 +48,7 @@ func (s *SearchRequest) findMatches() filepath.WalkFunc {
 }
 
 func (s *SearchRequest) setupFileWorkers() {
-	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
+	for i := 0; i < numGorutines; i++ {
 		fworker := fileWorker{s}
 		go fworker.run()
 	}
