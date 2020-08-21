@@ -27,7 +27,6 @@ type SearchRequest struct {
 	FilterValues FilterObject
 	waitGroup    *sync.WaitGroup
 	sortChannel  chan ResultRow
-	rowChannel   chan ResultRow
 	fileChannel  chan string
 	pq           *priorityQueue
 }
@@ -55,23 +54,14 @@ func (s *SearchRequest) setupFileWorkers() {
 	}
 }
 
-func (s *SearchRequest) setupRowWorkers() {
-	for i := 0; i < runtime.GOMAXPROCS(-1); i++ {
-		lworker := rowWorker{s}
-		go lworker.run()
-	}
-}
-
 func (s *SearchRequest) initialize() {
 	queue := make(priorityQueue, 0)
 	sortChannel := make(chan ResultRow, ChannelSize)
-	rowChannel := make(chan ResultRow, ChannelSize)
 	fileChannel := make(chan string, ChannelSize)
 	var waitGroup sync.WaitGroup
 
 	s.pq = &queue
 	s.sortChannel = sortChannel
-	s.rowChannel = rowChannel
 	s.fileChannel = fileChannel
 	s.waitGroup = &waitGroup
 }
@@ -92,7 +82,6 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	// of the program when used
 	// over large file trees
 	s.setupFileWorkers()
-	s.setupRowWorkers()
 
 	// walk the directory / file recursively
 	err := filepath.Walk(
@@ -108,7 +97,6 @@ func (s *SearchRequest) FindResults() []ResultRow {
 	s.waitGroup.Wait()
 	close(s.sortChannel)
 	close(s.fileChannel)
-	close(s.rowChannel)
 
 	results := []ResultRow{}
 	for s.pq.Len() > 0 {

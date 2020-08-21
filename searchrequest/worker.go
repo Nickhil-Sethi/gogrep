@@ -39,7 +39,7 @@ func (w *fileWorker) iterLinesJSON(
 			IsJSON:        w.ParseJSON,
 			FilePath:      filePath,
 		}
-		w.rowChannel <- row
+		w.filterRow(row)
 	}
 }
 
@@ -57,7 +57,7 @@ func (w *fileWorker) iterLinesPlain(
 			FilePath:      filePath,
 		}
 		w.waitGroup.Add(1)
-		w.rowChannel <- row
+		w.filterRow(row)
 	}
 }
 
@@ -100,16 +100,6 @@ func (w *fileWorker) findMatchInFile(
 	}
 }
 
-type rowWorker struct {
-	*SearchRequest
-}
-
-func (w *rowWorker) run() {
-	for row := range w.rowChannel {
-		w.filterRow(row)
-	}
-}
-
 func practiceIDMatches(row jsonRow, filter FilterObject) bool {
 	message := (row["message"]).(map[string]interface{})
 	PracticeID, _ := message["practice_id"]
@@ -135,7 +125,7 @@ func rowMatchesFilters(row jsonRow, filter FilterObject) bool {
 	return practiceIDMatches(row, filter) && requestIDMatches(row, filter)
 }
 
-func (w *rowWorker) filterRow(row ResultRow) {
+func (w *fileWorker) filterRow(row ResultRow) {
 
 	if w.ParseJSON && !rowMatchesFilters(
 		row.jsonContent, w.FilterValues) {
