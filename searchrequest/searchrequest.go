@@ -10,7 +10,7 @@ import (
 )
 
 const ChannelSize = 10000
-const numGorutines = 1000
+const numGorutines = 100
 
 // FilterObject is
 // Tracks what we filter on
