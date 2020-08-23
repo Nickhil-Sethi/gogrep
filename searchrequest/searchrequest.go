@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const ChannelSize = 10000
+// const ChannelSize = 0
 const numGorutines = 100
 
 // FilterObject is
@@ -56,8 +56,8 @@ func (s *SearchRequest) setupFileWorkers() {
 
 func (s *SearchRequest) initialize() {
 	queue := make(priorityQueue, 0)
-	sortChannel := make(chan ResultRow, ChannelSize)
-	fileChannel := make(chan string, ChannelSize)
+	sortChannel := make(chan ResultRow)
+	fileChannel := make(chan string)
 	var waitGroup sync.WaitGroup
 
 	s.pq = &queue
