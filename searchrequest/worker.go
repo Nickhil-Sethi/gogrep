@@ -131,7 +131,7 @@ func (w *fileWorker) filterRow(row ResultRow) {
 	}
 
 	var rowBytes []byte
-	var match []byte
+	var match bool
 
 	if w.ParseJSON {
 		rowBytes, _ = json.Marshal(row.jsonContent)
@@ -139,8 +139,8 @@ func (w *fileWorker) filterRow(row ResultRow) {
 		rowBytes = []byte(row.stringContent)
 	}
 
-	match = w.Pattern.Find(rowBytes)
-	if match == nil {
+	match = w.Pattern.Match(rowBytes)
+	if !match {
 		return
 	}
 
