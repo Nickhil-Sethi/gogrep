@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"runtime/pprof"
 
 	"github.com/Nickhil-Sethi/gogrep/searchrequest"
+	"github.com/gijsbers/go-pcre"
 )
 
 func main() {
@@ -60,8 +60,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	pattern, compileErr := regexp.Compile(
-		*patternPtr)
+	pattern, compileErr := pcre.Compile(
+		*patternPtr, 0)
 
 	if compileErr != nil {
 		log.Fatalf("Could not compile regex %s", *patternPtr)
@@ -91,7 +91,7 @@ func main() {
 	filterValues.RequestID = *RequestIDPtr
 
 	s := searchrequest.SearchRequest{
-		Pattern:      pattern,
+		Pattern:      &pattern,
 		Path:         *filenamePtr,
 		ParseJSON:    *jsonPtr,
 		FilterValues: filterValues}

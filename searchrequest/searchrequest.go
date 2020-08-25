@@ -5,8 +5,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sync"
+
+	"github.com/gijsbers/go-pcre"
 )
 
 // const ChannelSize = 0
@@ -21,7 +22,7 @@ type FilterObject struct {
 
 // SearchRequest : interface of search query
 type SearchRequest struct {
-	Pattern      *regexp.Regexp
+	Pattern      *pcre.Regexp
 	Path         string
 	ParseJSON    bool
 	FilterValues FilterObject
